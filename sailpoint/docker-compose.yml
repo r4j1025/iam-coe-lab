@@ -1,0 +1,55 @@
+version: "3.8"
+
+services:
+  sailpoint:
+    build: .
+    container_name: sailpoint
+    env_file:
+      - .env
+
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASSWORD}
+      DB_ROOT_USER: ${DB_ROOT_USER}
+      DB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      IIQ_HOSTNAME: localhost
+      IIQ_PORT: 8080
+
+    ports:
+      - "8080:8080"
+
+    volumes:
+      # --------------------------------------
+      # Cross-platform safe bind mount
+      # Works on:
+      # - macOS (Docker Desktop)
+      # - Ubuntu
+      # - Fedora
+      #
+      # Use relative path (recommended)
+      # --------------------------------------
+      - ./config:/config:ro
+
+      # --------------------------------------
+      # OPTIONAL: Absolute path examples
+      #
+      # macOS:
+      # - /Users/yourname/iam-coe-lab/sailpoint/config:/config:ro
+      #
+      # Ubuntu:
+      # - /home/yourname/iam-coe-lab/sailpoint/config:/config:ro
+      #
+      # Fedora:
+      # - /home/yourname/iam-coe-lab/sailpoint/config:/config:ro
+      # --------------------------------------
+
+    networks:
+      - localnet
+
+networks:
+  localnet:
+    external:
+      name: iam-coe-local-net

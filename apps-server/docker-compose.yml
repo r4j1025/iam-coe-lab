@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: "${PMA_CONTAINER_NAME:-phpmyadmin}"
+    restart: always
+    env_file:
+      - ./.env
+    environment:
+      PMA_HOST: ${MYSQL_CONTAINER_NAME}
+      PMA_PORT: ${MYSQL_PORT}
+      PMA_ARBITRARY: 1
+    ports:
+      - "${PMA_PORT}:80"
+    networks:
+      - localnet
+
+networks:
+  localnet:
+    external:
+      name: ${NETWORK_NAME}

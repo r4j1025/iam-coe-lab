@@ -6,7 +6,7 @@ services:
     container_name: "${MYSQL_CONTAINER_NAME:-mysql_db}"
     restart: always
     env_file:
-      - ./.env
+      - .env
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
@@ -21,7 +21,7 @@ services:
       - ./data/mysql:/var/lib/mysql
       # Mount any SQL files or init scripts from ./config into the MySQL init dir.
       # Files in ./config are executed on first container init by the official image.
-      - ./config:/docker-entrypoint-initdb.d:ro
+      - ./conf:/docker-entrypoint-initdb.d:ro
       # Alternative host bind mounts (examples; keep commented unless you explicitly want them):
       # Ubuntu example: /var/lib/mysql:/var/lib/mysql
       # Fedora example: /srv/mysql/data:/var/lib/mysql

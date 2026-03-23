@@ -27,16 +27,16 @@ esac
 
 case "$ACTION" in
   start)
-    docker-compose -f docker-compose.yml up -d $SERVICE
+    docker compose -f docker-compose.yml up -d $SERVICE
     ;;
   stop)
-    docker-compose -f docker-compose.yml stop $SERVICE
+    docker compose -f docker-compose.yml stop $SERVICE
     ;;
   restart)
-    docker-compose -f docker-compose.yml restart $SERVICE
+    docker compose -f docker-compose.yml restart $SERVICE
     ;;
   down)
-    docker-compose -f docker-compose.yml down
+    docker compose -f docker-compose.yml down
     ;;
   init)
     ./init-db.sh "$TYPE"

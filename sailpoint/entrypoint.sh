@@ -79,7 +79,8 @@ EOF
 	# -------------------------------
 	echo "⚙️ Generating iiq.properties..."
 
-	envsubst < /iiq/conf/iiq.properties.template > "$IIQ_WEBAPP/WEB-INF/classes/iiq.properties"
+	pwd
+	envsubst < $IIQ_HOME/conf/iiq.properties.template > "$IIQ_WEBAPP/WEB-INF/classes/iiq.properties"
 
 	echo "✅ Config ready"
 

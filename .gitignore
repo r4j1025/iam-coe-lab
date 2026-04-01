@@ -12,6 +12,7 @@ code/build/
 # -------------------------------
 db-server/data/
 ldap-server/data/
+apps-server/tomcat/webapps/
 
 # -------------------------------
 # Logs

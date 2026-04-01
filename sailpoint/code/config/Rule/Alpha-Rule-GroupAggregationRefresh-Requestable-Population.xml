@@ -1,0 +1,69 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Alpha-Rule-GroupAggregationRefresh-Requestable-Population" type="GroupAggregationRefresh">
+  <Description>This rule is used to set the owner or modify the account group before it is persisted to the database.</Description>
+  <Signature returnType="Object">
+    <Inputs>
+      <Argument name="log">
+        <Description> The log object associated with the SailPointContext. </Description>
+      </Argument>
+      <Argument name="context">
+        <Description> A sailpoint.api.SailPointContext object that can be used to query the database if necessary. </Description>
+      </Argument>
+      <Argument name="environment" type="Map">
+        <Description> Arguments passed to the aggregation task. </Description>
+      </Argument>
+      <Argument name="obj" type="ResourceObject">
+        <Description> A sailpoint.object.ResourceObject generated from the application and the ProvisioningPlan's ObjectRequest. </Description>
+      </Argument>
+      <Argument name="accountGroup" type="ManagedAttribute">
+        <Description> The account group being refreshed. </Description>
+      </Argument>
+      <Argument name="groupApplication" type="Application">
+        <Description> Application being aggregated. </Description>
+      </Argument>
+    </Inputs>
+    <Returns>
+      <Argument name="accountGroup" type="ManagedAttribute">
+        <Description> The refreshed account group object. </Description>
+      </Argument>
+    </Returns>
+  </Signature>
+  <Source><![CDATA[
+
+  import org.apache.log4j.Logger;
+
+  import sailpoint.object.Custom;
+  import sailpoint.object.Application;
+  import sailpoint.tools.Util;	
+
+  Logger logger = Logger.getLogger("IAM_COE_BIRTHRIGHT_PROVISIONING");
+  if (logger.isTraceEnabled()) {
+    logger.trace("Entered to Alpha-Rule-GroupAggregationRefresh-Requestable-Population Rule!!!");
+  }
+  Custom customObject = context.getObjectByName(Custom.class, "Alpha-Custom-Requestable-Entitlements"); 
+  String appName = groupApplication.getName(); 
+  logger.debug("Alpha-Rule-GroupAggregationRefresh-Requestable-Population -> Application Name : "+appName);
+  String description = obj.getAttribute("Description");
+  logger.debug("Alpha-Rule-GroupAggregationRefresh-Requestable-Population -> Description : "+description); 
+
+  if (customObject != null) { 
+    List<String> entitlements = customObject.get(appName); 
+    if (entitlements !=null && Util.isNotNullOrEmpty(description)) { 
+      if (entitlements.contains(description)) { 
+        accountGroup.setRequestable(true); 
+      } 
+      else { 
+        accountGroup.setRequestable(false); 
+      } 
+    } 
+  } 
+  else { 
+    logger.debug("Alpha-Rule-GroupAggregationRefresh-Requestable-Population -> CustomObject not found for application"); 
+  }
+  if (logger.isTraceEnabled()) {
+    logger.trace("Alpha-Rule-GroupAggregationRefresh-Requestable-Population Rule Ended!!!");
+  }
+
+  ]]></Source>
+</Rule>

@@ -1,0 +1,118 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Workflow PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Workflow explicitTransitions="true" libraries="Identity,IdentityRequest" name="Alpha-Dynamic Send Emails Sub" type="subprocesses">
+  <Variable input="true" name="identityName">
+    <Description>The name of the identity.</Description>
+  </Variable>
+  <Variable initializer="script:(identityDisplayName != void) ? identityDisplayName : resolveDisplayName(identityName)" input="true" name="identityDisplayName">
+    <Description>
+      The displayName of the identity being updated.
+      Query for this using a projection query and fall back to the name.
+    </Description>
+  </Variable>
+  <Variable input="true" name="emailArgList">
+    <Description>
+      List of HashMap, emailArgs, objects.  
+    </Description>
+  </Variable>
+  <Variable name="emailIterator">
+    <Description>
+      An Iterator of the emailArgList.  Each iteration is the HashMap, emailArgs, object.  
+    </Description>
+  </Variable>
+  <Variable name="emailArgs">
+    <Description>
+      A HashMap of arguments used to contain dynamic text in emails, as well as the to address and the template.  
+    </Description>
+  </Variable>
+  <Variable initializer="true" name="trace"/>
+  <Variable name="emailTemplateExists"/>
+  <Step icon="Start" name="start" posX="28" posY="10">
+    <Transition to="Build Email Args List" when="emailArgList == null"/>
+    <Transition to="Build Iterator"/>
+  </Step>
+  <Step name="Build Email Args List" posX="95" posY="141" resultVariable="emailArgList">
+    <Script>
+      <Source><![CDATA[
+			/*
+				could add logic to build if null
+			*/
+  		]]></Source>
+    </Script>
+    <Transition to="end" when="emailArgList == null"/>
+    <Transition to="Build Iterator"/>
+  </Step>
+  <Step name="Build Iterator" posX="155" posY="6" resultVariable="emailIterator">
+    <Arg name="emailArgList" value="ref:emailArgList"/>
+    <Script>
+      <Source><![CDATA[
+			if (emailArgList == null){
+				return null;
+  				
+  			} 
+
+			Iterator emailIterator = emailArgList.iterator();
+  			
+  			//System.out.println("Return emailIterator: " + emailIterator	);
+  			return emailIterator;
+		]]></Source>
+    </Script>
+    <Transition to="Get Next Email" when="emailIterator != null &amp;&amp; emailIterator.hasNext()"/>
+    <Transition to="Cleanup"/>
+  </Step>
+  <Step name="Get Next Email" posX="323" posY="3" resultVariable="emailArgs">
+    <Arg name="emailIterator" value="ref:emailIterator"/>
+    <Script>
+      <Source><![CDATA[
+			import java.util.*;
+			HashMap nextEmail = emailIterator.next();
+			
+			return nextEmail;
+		]]></Source>
+    </Script>
+    <Transition to="Check The Template" when="nextEmail != null"/>
+    <Transition to="Cleanup"/>
+  </Step>
+  <Step name="Check The Template" posX="518" posY="139" resultVariable="emailTemplateExists">
+    <Script>
+      <Source><![CDATA[
+  			import sailpoint.object.*;
+  			
+  			boolean eExists = false;
+  			
+  			if (emailArgs.get("emailTemplate") != null){
+	  			EmailTemplate et = context.getObjectByName(EmailTemplate.class, emailArgs.get("emailTemplate"));
+	  			
+	  			if (et != null){
+	  				eExists = true;
+	  			}
+  			}
+  			
+  			return eExists;
+  		]]></Source>
+    </Script>
+    <Transition to="Send Email" when="emailTemplateExists"/>
+    <Transition to="Get Next Email" when="emailIterator.hasNext()"/>
+    <Transition to="Cleanup"/>
+  </Step>
+  <Step action="call:sendEmail" icon="Default" name="Send Email" posX="690" posY="134">
+    <Arg name="template" value="script:emailArgs.get(&quot;emailTemplate&quot;)"/>
+    <Arg name="identityDisplayName" value="ref:identityDisplayName"/>
+    <Arg name="emailArgs" value="ref:emailArgs"/>
+    <Arg name="to" value="script:emailArgs.get(&quot;to&quot;)"/>
+    <Transition to="Get Next Email" when="emailIterator.hasNext()"/>
+    <Transition to="Cleanup"/>
+  </Step>
+  <Step name="Cleanup" posX="227" posY="213">
+    <Script>
+      <Source><![CDATA[
+  			emailArgList = null;
+  			emailIterator = null;
+  			workflow.put("emailArgList", null);
+  			workflow.put("emailIterator", null);
+  		]]></Source>
+    </Script>
+    <Transition to="end"/>
+  </Step>
+  <Step icon="Stop" name="end" posX="161" posY="213"/>
+</Workflow>

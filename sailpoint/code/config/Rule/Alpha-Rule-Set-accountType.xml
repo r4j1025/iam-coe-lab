@@ -1,0 +1,72 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Alpha-Rule-Set-accountType" type="LinkAttribute">
+  <Description>This rule is used when promoting account attributes from Links during aggregation.</Description>
+  <Signature returnType="Object"/>
+  <Source><![CDATA[
+
+  import sailpoint.tools.Util;
+
+  import org.apache.log4j.Logger;
+
+  Logger log = Logger.getLogger("iiq.alpha.Alpha-Rule-Set-accountType");
+  log.debug("Alpha-Rule-Set-accountType STARTS");
+
+  String accountType = "primaryAccount";
+  if(null != link)
+  {
+    String applicationName = link.getApplicationName();
+    log.debug("applicationName:"+applicationName);
+    switch(applicationName) 
+    {  
+      case "Alpha - Active Directory": 
+      log.debug("case Alpha - Active Directory"); 
+      String extensionName = link.getAttribute("extensionName");
+      log.debug("extensionName:"+extensionName);
+      if(Util.isNotNullOrEmpty(extensionName))
+      {
+        if(extensionName.equalsIgnoreCase("secondaryAccount"))
+          accountType="secondaryAcocunt";
+        if(extensionName.equalsIgnoreCase("privilegedAccount"))
+          accountType="privilegedAccount";
+        if(extensionName.equalsIgnoreCase("serviceAccount"))
+          accountType="serviceAccount";
+      }
+      break;
+
+      case "TimeSheet_LDAP": 
+      log.debug("case TimeSheet_LDAP"); 
+      String cn = (String) link.getAttribute("cn");
+      if(Util.isNotNullOrEmpty(cn))
+      {
+        if(cn.startsWith("pa_"))
+          accountType="privilegedAccount";
+        if(cn.startsWith("se_"))
+          accountType="secondaryAccount";
+        if(cn.startsWith("svc_"))
+          accountType="serviceAccount";
+      }
+      break;
+      
+      case "HRSoft": 
+      log.debug("case HRSoft"); 
+      String employeeID = link.getAttribute("employeeID");
+      if(Util.isNotNullOrEmpty(employeeID))
+      {
+        if(employeeID.startsWith("pa_"))
+          accountType="privilegedAccount";
+        if(employeeID.startsWith("sa_"))
+          accountType="serviceAccount";
+      }
+      break;
+
+      default: 
+      accountType = "primaryAccount";
+    }
+    return accountType;
+  }
+
+
+
+  ]]></Source>
+</Rule>

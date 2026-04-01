@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Custom PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Custom name="Alpha-Custom-Termination Custom Object">
+  <Attributes>
+    <Map>
+      <entry key="AD_BaseOU" value="OU=Alpha"/>
+      <entry key="AD_DisabledOU" value="OU=Disabled Users"/>
+      <entry key="AD_Domain" value="DC=tcs,DC=sailpointiamcoe,DC=com"/>
+      <entry key="terminationFailure_NotifyGroup" value="alphaOperations@alpha.com"/>
+      <entry key="terminationFailure_emailTemplate" value="Alpha-EmailTemplate-TerminationFailure"/>
+      <entry key="terminationSuccess_emailTemplate" value="Alpha-EmailTemplate-TerminationSuccess"/>
+    </Map>
+  </Attributes>
+</Custom>

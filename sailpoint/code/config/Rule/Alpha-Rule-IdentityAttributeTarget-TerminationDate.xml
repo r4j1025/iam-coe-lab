@@ -1,0 +1,92 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Alpha-Rule-IdentityAttributeTarget-TerminationDate" type="IdentityAttributeTarget">
+  <Description>Identity attribute target rules are used to transform identity attribute values that are being pushed to targets.</Description>
+  <Signature returnType="Object">
+    <Inputs>
+      <Argument name="log">
+        <Description>
+          The log object associated with the SailPointContext.
+        </Description>
+      </Argument>
+      <Argument name="context">
+        <Description>
+          A sailpoint.api.SailPointContext object that can be used to query the database if necessary.
+        </Description>
+      </Argument>
+      <Argument name="value" type="Object">
+        <Description>
+          The value of the identity attribute.  Note that this could be single value or a list of values.
+        </Description>
+      </Argument>
+      <Argument name="sourceIdentityAttribute">
+        <Description>
+          The sailpoint.object.ObjectAttribute for this target.
+        </Description>
+      </Argument>
+      <Argument name="sourceIdentityAttributeName">
+        <Description>
+          The name of the identity attribute for this target.
+        </Description>
+      </Argument>
+      <Argument name="sourceAttributeRequest">
+        <Description>
+          The sailpoint.object.ProvisioningPlan.AttributeRequest that is
+          setting the attribute on the identity.
+        </Description>
+      </Argument>
+      <Argument name="target">
+        <Description>
+          The sailpoint.object.AttributeTarget that is being processed.
+        </Description>
+      </Argument>
+      <Argument name="link">
+        <Description>
+          The sailpoint.object.Link that is being processed.
+        </Description>
+      </Argument>
+      <Argument name="identity">
+        <Description>
+          The sailpoint.object.Identity that is being processed.
+        </Description>
+      </Argument>
+      <Argument name="project">
+        <Description>
+          The sailpoint.object.ProvisioningProject that has the changes that
+          are being requested.
+        </Description>
+      </Argument>
+    </Inputs>
+    <Returns>
+      <Argument name="attributeValue">
+        <Description>
+          The transformed value that will be pushed to the target.
+        </Description>
+      </Argument>
+    </Returns>
+  </Signature>
+  <Source><![CDATA[
+
+  import java.text.SimpleDateFormat;
+  import java.util.Date;
+
+  import org.apache.log4j.Logger;
+
+  Logger logger = Logger.getLogger("IAM_COE_BIRTHRIGHT_PROVISIONING");
+  if (logger.isTraceEnabled()) {
+    logger.trace("Entered to Alpha-Rule-IdentityAttributeTarget-TerminationDate Rule!!!");
+  }
+  logger.debug("Alpha-Rule-IdentityAttributeTarget-TerminationDate -> Before Modification TerminationDate Value : "+value);
+  Object attributeValue = null;
+  if (value instanceof String) {
+    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+    attributeValue = sdf.parse(value);
+  }
+  logger.debug("Alpha-Rule-IdentityAttributeTarget-TerminationDate -> After Modification TerminationDate Value : "+attributeValue);
+  if (logger.isTraceEnabled()) {
+    logger.trace("Alpha-Rule-IdentityAttributeTarget-TerminationDate Rule is Ended!!!");
+  }
+  return attributeValue;
+
+  ]]></Source>
+</Rule>

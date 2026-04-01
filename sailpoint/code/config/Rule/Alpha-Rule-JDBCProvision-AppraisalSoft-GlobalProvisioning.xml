@@ -1,0 +1,396 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Alpha-Rule-JDBCProvision-AppraisalSoft-GlobalProvisioning" type="JDBCProvision">
+  <Description>This rule is used by the JDBC connector to do provisioning of the data .</Description>
+  <Signature returnType="ProvisioningResult">
+    <Inputs>
+      <Argument name="log">
+        <Description>
+				The log object associated with the SailPointContext.
+				</Description>
+      </Argument>
+      <Argument name="context">
+        <Description>
+				A sailpoint.api.SailPointContext object that can be used to query the database if necessary.
+				</Description>
+      </Argument>
+      <Argument name="application">
+        <Description>
+				The application whose data file is being processed.
+				</Description>
+      </Argument>
+      <Argument name="schema">
+        <Description>
+				The Schema currently in use.
+				</Description>
+      </Argument>
+      <Argument name="connection">
+        <Description>
+				A connection object to connect to database.
+				</Description>
+      </Argument>
+      <Argument name="plan">
+        <Description>
+				The ProvisioningPlan created against the JDBC application.
+				</Description>
+      </Argument>
+    </Inputs>
+    <Returns>
+      <Argument name="result">
+        <Description>
+				A Provisioning Result object is desirable to return the status.IT can be a new object or part of  Provisioning Plan
+				</Description>
+      </Argument>
+    </Returns>
+  </Signature>
+  <Source><![CDATA[
+
+	import java.sql.Connection;
+	import java.sql.PreparedStatement;
+	import java.sql.SQLException;
+	import java.util.ArrayList;
+	import java.util.List;
+
+	import org.apache.log4j.Logger;
+
+	import sailpoint.api.SailPointContext;
+	import sailpoint.api.SailPointFactory;
+	import sailpoint.object.ProvisioningPlan;
+	import sailpoint.object.ProvisioningPlan.AccountRequest;
+	import sailpoint.object.ProvisioningPlan.AttributeRequest;
+	import sailpoint.object.ProvisioningResult;
+	import sailpoint.tools.GeneralException;
+	import sailpoint.tools.Util;
+	import sailpoint.tools.Message;
+
+	public static Object getAttributeRequestValue(AccountRequest accReq, String attReqName, Logger logger) throws GeneralException {
+		if (logger.isTraceEnabled()) {
+			logger.trace("Entered to getAttributeRequestValue method!!!");
+		}
+		AttributeRequest attReq = accReq.getAttributeRequest(attReqName);
+		if (attReq != null) {
+			Object attReqValue = attReq.getValue();
+			logger.debug("getAttributeRequestValue -> AttributeRequest value : "+attReqValue);
+			if (logger.isTraceEnabled()) {
+				logger.trace("getAttributeRequestValue method Ended!!!");
+			}
+			return attReqValue;
+		}
+		if (logger.isTraceEnabled()) {
+			logger.trace("getAttributeRequestValue method Ended!!!");
+		}
+		return null;
+	}
+
+	Logger logger = Logger.getLogger("iiq.alpha.Alpha-Rule-JDBCProvision-AppraisalSoft-GlobalProvisioning");
+	if (logger.isTraceEnabled()) {
+		logger.trace("Entered to Alpha-Rule-JDBCProvision-AppraisalSoft-GlobalProvisioning Rule!!");
+	}
+
+	String APPRAISAL_SOFT_EMPLOYEE_TABLE = "ap_useraccount";
+	String APPRAISAL_SOFT_LOGIN_TABLE = "ap_login";
+	String APPRAISAL_SOFT_USER_ROLE_TABLE = "ap_user_roles";
+
+	ProvisioningResult result = new ProvisioningResult();
+	List<Message> errorMessages = new ArrayList<Message>();
+
+	try {
+		if (plan != null) {
+			logger.debug("Plan : "+plan.toXml());
+			List<AccountRequest> accReqList = plan.getAccountRequests(application.getName());
+			if (accReqList != null && accReqList.size() > 0) {
+				for (AccountRequest accReq : accReqList) {
+					logger.debug("AccountRequest Operation : "+accReq.getOperation());
+					if (accReq.getOperation().equals(AccountRequest.Operation.Create)) {
+						//Triggers for Joiner and Self Request
+						List<AttributeRequest> attReqList = accReq.getAttributeRequests();
+						if (attReqList != null && attReqList.size() > 0) {
+							PreparedStatement statement1 = connection.prepareStatement("INSERT INTO "+APPRAISAL_SOFT_EMPLOYEE_TABLE+" (employeeID, firstName, department, location, userStatus) VALUES (?,?,?,?,?)");
+							PreparedStatement statement2 = connection.prepareStatement("INSERT INTO "+APPRAISAL_SOFT_LOGIN_TABLE+" (employeeID, password) VALUES (?,?)");
+							PreparedStatement statement3 = connection.prepareStatement("INSERT INTO "+APPRAISAL_SOFT_USER_ROLE_TABLE+" (employeeID, roleID) VALUES (?,?)");
+
+							//String employeeID = (String)getAttributeRequestValue(accReq, "empID", logger);
+              String employeeID = accReq.getNativeIdentity();
+
+							//Entering values in Employee Table
+							statement1.setString(1, employeeID);
+							statement1.setString(2, (String)getAttributeRequestValue(accReq, "firstName", logger));
+							statement1.setString(3, (String)getAttributeRequestValue(accReq, "department", logger));
+							statement1.setString(4, (String)getAttributeRequestValue(accReq, "location", logger));
+							statement1.setString(5, (String)getAttributeRequestValue(accReq, "userStatus", logger));
+							logger.debug("SQL Employee Table Statement : "+statement1);
+
+							//Entering values in Login Table
+							statement2.setString(1, employeeID);
+							statement2.setString(2, employeeID);
+							logger.debug("SQL Employee Login Statement : "+statement2);
+
+							boolean isEmployeeStatementSuccess = statement1.executeUpdate() > 0;
+							logger.debug("SQL Statement for Employee table : "+isEmployeeStatementSuccess);
+
+							boolean isLoginStatementSuccess = statement2.executeUpdate() > 0;
+							logger.debug("SQL Statement for Login table : "+isLoginStatementSuccess);
+
+							if (isEmployeeStatementSuccess && isLoginStatementSuccess) {
+								result.setStatus(ProvisioningResult.STATUS_COMMITTED);
+								accReq.setResult(result);
+							}
+							else {
+								result.setStatus(ProvisioningResult.STATUS_FAILED);
+								accReq.setResult(result);
+							}
+
+							//Entering values in User roles Table
+							AttributeRequest roleAttrReq = accReq.getAttributeRequest("roleID");
+							if (roleAttrReq != null) {
+								Object roleValue = roleAttrReq.getValue();
+								if (roleValue instanceof String) {
+									statement3.setString(1, employeeID);
+									statement3.setString(2, (String)roleAttrReq.getValue());
+
+									logger.debug("SQL Employee Role Statement : "+statement3);
+									boolean isRoleStatementSuccess = statement3.executeUpdate() > 0;
+									logger.debug("SQL Statement for Role table : "+isRoleStatementSuccess);
+
+									if (isRoleStatementSuccess) {
+										result.setStatus(ProvisioningResult.STATUS_COMMITTED);
+										roleAttrReq.setResult(result);
+									}
+									else {
+										result.setStatus(ProvisioningResult.STATUS_FAILED);
+										roleAttrReq.setResult(result);
+									}
+								}
+								else if (roleValue instanceof List) {
+									List<String> roleValueList = (List)roleValue;
+									for (String role : roleValueList) {
+										statement3.setString(1, employeeID);
+										statement3.setString(2, (String)role);
+
+										logger.debug("SQL Employee Role Statement : "+statement3);
+										boolean isRoleStatementSuccess = statement3.executeUpdate() > 0;
+										logger.debug("SQL Statement for Role table : "+isRoleStatementSuccess);
+
+										if (isRoleStatementSuccess) {
+											result.setStatus(ProvisioningResult.STATUS_COMMITTED);
+											roleAttrReq.setResult(result);
+										}
+										else {
+											result.setStatus(ProvisioningResult.STATUS_FAILED);
+											roleAttrReq.setResult(result);
+										}
+									}
+								}
+							}
+							else {
+								//Assign the role default
+								String defaultRole = "1";
+								PreparedStatement statement = connection.prepareStatement("INSERT INTO "+APPRAISAL_SOFT_USER_ROLE_TABLE+" (employeeID,roleID) VALUES (?,?)");
+								statement.setString(1, employeeID);
+								statement.setString(2, defaultRole);
+								logger.debug("SQL Employee Role Statement : "+statement);
+								boolean isRoleStatementSuccess = statement.executeUpdate() > 0;
+								logger.debug("SQL Statement for Role table : "+isRoleStatementSuccess);
+							}
+						}
+					}
+					else if (accReq.getOperation().equals(AccountRequest.Operation.Modify)) {
+						String nativeIdentity = accReq.getNativeIdentity();
+						List<AttributeRequest> attReqList = accReq.getAttributeRequests();
+						if (attReqList != null && attReqList.size() > 0) {
+							for (AttributeRequest attReq : attReqList) {
+								if (attReq.getName().equalsIgnoreCase("firstName")) {
+									PreparedStatement statement = connection.prepareStatement("UPDATE "+APPRAISAL_SOFT_EMPLOYEE_TABLE+" SET firstName=? WHERE employeeID=?");
+									statement.setString(1, (String)getAttributeRequestValue(accReq, "firstName", logger));
+									statement.setString(2, nativeIdentity);
+									logger.debug("SQL Employee Statement : "+statement);
+									boolean isSuccess = statement.executeUpdate() > 0;
+									if (isSuccess) {
+										result.setStatus(ProvisioningResult.STATUS_COMMITTED);
+										accReq.setResult(result);
+									}
+									else {
+										result.setStatus(ProvisioningResult.STATUS_FAILED);
+										accReq.setResult(result);
+									}
+								}
+								if (attReq.getName().equalsIgnoreCase("department")) {
+									PreparedStatement statement = connection.prepareStatement("UPDATE "+APPRAISAL_SOFT_EMPLOYEE_TABLE+" SET department=? WHERE employeeID=?");
+									statement.setString(1, (String)getAttributeRequestValue(accReq, "department", logger));
+									statement.setString(2, nativeIdentity);
+									logger.debug("SQL Employee Statement : "+statement);
+									boolean isSuccess = statement.executeUpdate() > 0;
+									if (isSuccess) {
+										result.setStatus(ProvisioningResult.STATUS_COMMITTED);
+										accReq.setResult(result);
+									}
+									else {
+										result.setStatus(ProvisioningResult.STATUS_FAILED);
+										accReq.setResult(result);
+									}
+								}
+								if (attReq.getName().equalsIgnoreCase("userStatus")) {
+									PreparedStatement statement = connection.prepareStatement("UPDATE "+APPRAISAL_SOFT_EMPLOYEE_TABLE+" SET userStatus=? WHERE employeeID=?");
+									statement.setString(1, (String)getAttributeRequestValue(accReq, "userStatus", logger));
+									statement.setString(2, nativeIdentity);
+									logger.debug("SQL Employee Statement : "+statement);
+									boolean isSuccess = statement.executeUpdate() > 0;
+									if (isSuccess) {
+										result.setStatus(ProvisioningResult.STATUS_COMMITTED);
+										accReq.setResult(result);
+									}
+									else {
+										result.setStatus(ProvisioningResult.STATUS_FAILED);
+										accReq.setResult(result);
+									}
+								}
+								if (attReq.getName().equalsIgnoreCase("roleID")) {
+									PreparedStatement statement = connection.prepareStatement("INSERT INTO "+APPRAISAL_SOFT_USER_ROLE_TABLE+" (employeeID,roleID) VALUES (?,?)");
+									Object roleValue = attReq.getValue();
+									if (roleValue instanceof String) {
+										statement.setString(1, nativeIdentity);
+										statement.setString(2, (String)attReq.getValue());
+
+										logger.debug("SQL Employee Role Statement : "+statement);
+										boolean isRoleStatementSuccess = statement.executeUpdate() > 0;
+										logger.debug("SQL Statement for Role table : "+isRoleStatementSuccess);
+
+										if (isRoleStatementSuccess) {
+											result.setStatus(ProvisioningResult.STATUS_COMMITTED);
+											attReq.setResult(result);
+											accReq.setResult(result);
+										}
+										else {
+											result.setStatus(ProvisioningResult.STATUS_FAILED);
+											attReq.setResult(result);
+											accReq.setResult(result);
+										}
+									}
+									else if (roleValue instanceof List) {
+										List<String> roleValueList = (List)roleValue;
+										for (String role : roleValueList) {
+											statement.setString(1, nativeIdentity);
+											statement.setString(2, (String)role);
+
+											logger.debug("SQL Employee Role Statement : "+statement);
+											boolean isRoleStatementSuccess = statement.executeUpdate() > 0;
+											logger.debug("SQL Statement for Role table : "+isRoleStatementSuccess);
+
+											if (isRoleStatementSuccess) {
+												result.setStatus(ProvisioningResult.STATUS_COMMITTED);
+												attReq.setResult(result);
+												accReq.setResult(result);
+											}
+											else {
+												result.setStatus(ProvisioningResult.STATUS_FAILED);
+												attReq.setResult(result);
+												accReq.setResult(result);
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+					else if (accReq.getOperation().equals(AccountRequest.Operation.Enable)) {
+						String nativeIdentity = accReq.getNativeIdentity();
+						PreparedStatement statement = connection.prepareStatement("UPDATE "+APPRAISAL_SOFT_EMPLOYEE_TABLE+" SET userStatus='active' WHERE employeeID=?");
+						statement.setString(1, nativeIdentity);
+						logger.debug("SQL Employee Role Statement : "+statement);
+						boolean isSuccess = statement.executeUpdate() > 0;
+						if (isSuccess) {
+							result.setStatus(ProvisioningResult.STATUS_COMMITTED);
+							accReq.setResult(result);
+						}
+						else {
+							result.setStatus(ProvisioningResult.STATUS_FAILED);
+							accReq.setResult(result);
+						}
+					}
+					else if (accReq.getOperation().equals(AccountRequest.Operation.Disable)) {
+						String nativeIdentity = accReq.getNativeIdentity();
+						PreparedStatement statement = connection.prepareStatement("UPDATE "+APPRAISAL_SOFT_EMPLOYEE_TABLE+" SET userStatus='inactive' WHERE employeeID=?");
+						statement.setString(1, nativeIdentity);
+						logger.debug("SQL Employee Role Statement : "+statement);
+						boolean isSuccess = statement.executeUpdate() > 0;
+						if (isSuccess) {
+							result.setStatus(ProvisioningResult.STATUS_COMMITTED);
+							accReq.setResult(result);
+						}
+						else {
+							result.setStatus(ProvisioningResult.STATUS_FAILED);
+							accReq.setResult(result);
+						}
+					}
+					else if (accReq.getOperation().equals(AccountRequest.Operation.Delete)) {
+						//Triggers for Remove account
+						AttributeRequest attReq = accReq.getAttributeRequest("employeeID");
+						if (attReq != null) {
+							PreparedStatement statement1 = connection.prepareStatement("DELETE FROM "+APPRAISAL_SOFT_EMPLOYEE_TABLE+" WHERE employeeID=?");
+							PreparedStatement statement2 = connection.prepareStatement("DELETE FROM "+APPRAISAL_SOFT_LOGIN_TABLE+" WHERE employeeID=?");
+							PreparedStatement statement3 = connection.prepareStatement("DELETE FROM "+APPRAISAL_SOFT_USER_ROLE_TABLE+" WHERE employeeID=?");
+							
+							statement1.setString(1, (String)attReq.getValue());
+							logger.debug("SQL Employee Table Statement : "+statement1);
+							
+							statement2.setString(1, (String)attReq.getValue());
+							logger.debug("SQL Employee Login Statement : "+statement2);
+							
+							statement3.setString(1, (String)attReq.getValue());
+							logger.debug("SQL Employee user Roles Statement : "+statement3);
+							
+							boolean isEmployeeStatementSuccess = statement1.executeUpdate() > 0;
+							boolean isLoginStatementSuccess = statement2.executeUpdate() > 0;
+							boolean isRoleStatementSuccess = statement3.executeUpdate() > 0;
+							
+							if (isEmployeeStatementSuccess && isLoginStatementSuccess && isRoleStatementSuccess) {
+								result.setStatus(ProvisioningResult.STATUS_COMMITTED);
+								accReq.setResult(result);
+							}
+							else {
+								result.setStatus(ProvisioningResult.STATUS_FAILED);
+								accReq.setResult(result);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	catch (SQLException exp) {
+		logger.error("Caught SQLException : "+exp.getMessage());
+		Message msg = new Message();
+		msg.setKey("Caught SQLException : "+exp.getMessage());
+		msg.setType(Message.Type.Error);
+		errorMessages.add(msg);
+		result.setStatus(ProvisioningResult.STATUS_FAILED);
+	}
+	catch (GeneralException exp) {
+		logger.error("Caught GeneralException : "+exp.getMessage());
+		Message msg = new Message();
+		msg.setKey("Caught GeneralException : "+exp.getMessage());
+		msg.setType(Message.Type.Error);
+		errorMessages.add(msg);
+		result.setStatus(ProvisioningResult.STATUS_FAILED);
+	}
+	catch (Exception exp) {
+		logger.error("Caught JAVA Exception : "+exp.getMessage());
+		Message msg = new Message();
+		msg.setKey("Caught JAVA Exception : "+exp.getMessage());
+		msg.setType(Message.Type.Error);
+		errorMessages.add(msg);
+		result.setStatus(ProvisioningResult.STATUS_FAILED);
+	}
+
+	if (result.getStatus().equals(ProvisioningResult.STATUS_FAILED)) {
+		result.setErrors(errorMessages);
+	}
+	logger.debug("Final ProvisioningResult : "+result.toXml());
+	if (logger.isTraceEnabled()) {
+		logger.trace("Alpha-Rule-JDBCProvision-AppraisalSoft-GlobalProvisioning Ended");
+	}
+
+	return result;
+
+  ]]></Source>
+</Rule>

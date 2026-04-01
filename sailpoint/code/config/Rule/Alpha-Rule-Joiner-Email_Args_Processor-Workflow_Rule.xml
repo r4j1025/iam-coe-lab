@@ -1,0 +1,112 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Alpha-Rule-Joiner-Email Args Processor-Workflow Rule" type="Workflow">
+  <Description>This rule is to set emailArgsList in Joiner workflow. This rule should return List of Maps. The Map should contain the information related to the emails that should be sent during Joiner.The Map should have "to" and "emailTemplate" keys.
+
+  </Description>
+  <ReferencedRules>
+    <Reference class="sailpoint.object.Rule" name="Alpha-Rule-Generic-RuleLibrary"/>
+  </ReferencedRules>
+  <Signature returnType="Object">
+    <Inputs>
+      <Argument name="log">
+        <Description>
+          The log object associated with the SailPointContext.
+        </Description>
+      </Argument>
+      <Argument name="context">
+        <Description>
+          A sailpoint.api.SailPointContext object that can be used to query the database if necessary.
+        </Description>
+      </Argument>
+      <Argument name="wfcontext">
+        <Description>
+          The current WorkflowContext.
+        </Description>
+      </Argument>
+      <Argument name="handler">
+        <Description>
+          The workflow handler associated with the current WorkflowContext.
+        </Description>
+      </Argument>
+      <Argument name="workflow">
+        <Description>
+          The current Workflow definition.
+        </Description>
+      </Argument>
+      <Argument name="step">
+        <Description>
+          The current Step.
+        </Description>
+      </Argument>
+      <Argument name="approval">
+        <Description>
+          The current Approval.
+        </Description>
+      </Argument>
+      <Argument name="item">
+        <Description>
+          The WorkItem being processed.
+        </Description>
+      </Argument>
+    </Inputs>
+    <Returns>
+      <Argument name="Object">
+        <Description>
+          The result of the workflow rule; dependent on the rule itself.
+        </Description>
+      </Argument>
+    </Returns>
+  </Signature>
+  <Source><![CDATA[
+
+  import java.util.*;
+  import sailpoint.tools.*;
+  import sailpoint.object.Identity;
+  import sailpoint.object.Application;
+  import sailpoint.object.Custom;
+  import sailpoint.object.Workflow;
+
+  import org.apache.log4j.Logger;
+
+ Logger log = Logger.getLogger("iiq.alpha.rule.Alpha-Rule-Joiner-Email Args Processor-Workflow Rule"); 
+  log.debug("Alpha-Rule-Joiner-Email Args Processor-Workflow Rule STARTS");
+
+  List emailArgsListFinal = new ArrayList(); //final List of Maps that should be returned
+  Identity identity = context.getObject(Identity.class,identityName);
+
+  //To send email on Joiner Success. Get the first Active Manager, form the Map with emailTemplate,to. Add the map to the final List.  
+  String joinerEmailTemplate = (String) getValueFromCustomObject("Alpha-Custom-Joiner Custom Object","joinerSuccess_emailTemplate"); 
+  String joineradAccountCreationEmailTemplate = (String) getValueFromCustomObject("Alpha-Custom-Joiner Custom Object","joinerSuccess_emailTemplate");
+  log.debug("joinerEmailTemplate :"+joinerEmailTemplate);
+  log.debug("joineradAccountCreationEmailTemplate :"+joineradAccountCreationEmailTemplate);
+
+  Identity validManager = null;  
+
+  Map joinerSuccessEmailMap = new HashMap(); 
+  Map adAccCreationEmailMap = new HashMap(); 
+
+  validManager = getValidManagerRecursive(context,identity,"spadmin");
+  
+  log.debug("joinerSuccessTo : "+ validManager.getEmail());
+
+  joinerSuccessEmailMap.put("to",validManager.getEmail());
+  joinerSuccessEmailMap.put("emailTemplate",joinerEmailTemplate);
+  
+  log.debug("adAccCreation : "+ validManager.getEmail());
+
+  adAccCreationEmailMap.put("to",validManager.getEmail());
+  adAccCreationEmailMap.put("emailTemplate",joineradAccountCreationEmailTemplate);  
+
+  emailArgsListFinal.add(joinerSuccessEmailMap);
+  emailArgsListFinal.add(adAccCreationEmailMap);
+
+
+  log.debug("Final emailArgsList: "+emailArgsListFinal);
+  return emailArgsListFinal;
+
+
+
+
+  ]]></Source>
+</Rule>

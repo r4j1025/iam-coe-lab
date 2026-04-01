@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Custom PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Custom name="Alpha-Custom-Joiner Custom Object">
+  <Attributes>
+    <Map>
+      <entry key="emailArgsList_jApplicationSpecific">
+        <value>
+          <List>
+            <Map>
+              <entry key="emailTemplate" value="Alpha-EmailTemplate-JoinerSuccess"/>
+              <entry key="toEmailList">
+                <value>
+                  <List>
+                    <String>test@abc.com</String>
+                  </List>
+                </value>
+              </entry>
+            </Map>
+          </List>
+        </value>
+      </entry>
+      <entry key="joinerFailure_NotifyGroup" value="alphaOperations@alpha.com"/>
+      <entry key="joinerFailure_emailTemplate" value="Alpha-EmailTemplate-JoinerFailure"/>
+      <entry key="joinerSuccess_emailTemplate" value="Alpha-EmailTemplate-JoinerSuccess"/>
+      <entry key="joineradAccountCreation_emailTemplate" value="Alpha-EmailTemplate-ActiveDirectory_AccountCreation"/>
+    </Map>
+  </Attributes>
+</Custom>

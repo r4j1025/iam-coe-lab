@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Bundle PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Bundle displayName="Alpha Birthright HR Role" name="Alpha-Role-IT-Birthright-HR" type="birthright">
+  <Attributes>
+    <Map>
+      <entry key="accountSelectorRules"/>
+      <entry key="allowDuplicateAccounts" value="false"/>
+      <entry key="allowMultipleAssignments" value="false"/>
+      <entry key="mergeTemplates" value="false"/>
+      <entry key="sysDescriptions">
+        <value>
+          <Map>
+            <entry key="en_US"/>
+          </Map>
+        </value>
+      </entry>
+    </Map>
+  </Attributes>
+  <Inheritance>
+    <Reference class="sailpoint.object.Bundle" name="Alpha-Role-Org-Birthright"/>
+  </Inheritance>
+  <Owner>
+    <Reference class="sailpoint.object.Identity" name="spadmin"/>
+  </Owner>
+  <Selector>
+    <IdentitySelector>
+      <MatchExpression and="true">
+        <MatchTerm name="userType" type="Entitlement" value="Employee"/>
+        <MatchTerm name="department" type="Entitlement" value="HR"/>
+      </MatchExpression>
+    </IdentitySelector>
+  </Selector>
+  <Profiles>
+    <Profile>
+      <ApplicationRef>
+        <Reference class="sailpoint.object.Application" name="HRSoft"/>
+      </ApplicationRef>
+      <Constraints>
+        <Filter operation="CONTAINS_ALL" property="roleId">
+          <Value>
+            <List>
+              <String>3</String>
+            </List>
+          </Value>
+        </Filter>
+      </Constraints>
+    </Profile>
+  </Profiles>
+</Bundle>

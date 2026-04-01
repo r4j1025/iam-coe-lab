@@ -1,0 +1,361 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Alpha-Rule-Generic-RuleLibrary">
+  <Source><![CDATA[
+  import java.util.*;
+  import sailpoint.tools.*;
+  import sailpoint.object.Identity;
+  import sailpoint.object.Application;
+  import sailpoint.api.SailPointContext;
+  import sailpoint.object.ProvisioningProject;
+  import sailpoint.object.ProvisioningPlan.*;
+  import sailpoint.object.ProvisioningResult;
+  import sailpoint.workflow.WorkflowContext;
+
+  import sailpoint.object.EmailOptions;
+  import sailpoint.object.EmailTemplate;
+
+  import javax.naming.*;
+  import javax.naming.directory.*;
+  import org.apache.log4j.Logger;
+
+  Logger log = Logger.getLogger("iiq.alpha.Alpha-Rule-Generic-RuleLibrary");
+
+  //TODO: enhance the function to handle multiple arguments and to fetch from custom object
+  public Object getValueFromCustomObject(String customObjectName, String keys)
+  {
+    log.debug("Inside getValueFromCustomObject function");
+    Custom custom = context.getObject(Custom.class, customObjectName);
+    if(null!= custom)
+    {
+      Object object = custom.get(keys);
+      return object;
+    }
+    return null;
+
+  }
+  /**
+	 * Recursively iterates through the manager chain looking for an Active Identity to return.  If it can't find one, the backup Identity is returned.
+	 * 
+	 * @param context
+	 * @param identity
+	 * @param backup		Backup identity if active, non-exec manager is not found
+	 * @return
+	 * @throws GeneralException 
+	 */
+  public static Identity getValidManagerRecursive(SailPointContext context, Identity identity, String backup) throws GeneralException
+  {
+    log.debug("Inside getValidManagerRecursive function");
+
+    Identity manager = (identity != null) ? identity.getManager() : null;
+
+    if (manager != null)
+    {
+      if(!manager.isInactive())
+      {
+        return manager;
+      }
+      else if(manager != identity)
+      {
+        return getValidManagerRecursive(context, manager, backup);//can someone be their own manager? (could result in infinite recursion) if yes, then return identity if manager = identity
+      }
+
+    }	
+    return (Identity) context.getObjectByName(Identity.class, backup);
+
+  }
+  /**
+   *Call this method to send the Email
+   * This methis accepts emailTemplate,to,cc and a Map of arguments that should be sent in Email.
+   **/
+  public void sendEmails(String template,String to, String cc, Map args)
+  {
+    log.debug("Inside sendEmails function");
+    log.debug("template: "+template);
+    log.debug("to : "+to);
+    log.debug("cc : "+cc);
+    log.debug("args : "+args);    
+
+    EmailTemplate emailTemplate = context.getObject(EmailTemplate.class, template);
+
+    if( null != emailTemplate && Util.isNotNullOrEmpty(to))
+    {
+      EmailOptions options = new EmailOptions();
+
+      options.setTo(to);
+      if(null != cc)
+        options.setCc(cc);
+      if(null != args)
+        options.setVariables(args);
+      context.sendEmailNotification(emailTemplate,options);
+    }
+    else{
+      log.debug("Email Template doesnot exist or to address is not present");
+    }
+  }
+
+
+  /**
+   *To check the Failure in workflow. Error can be in WorkflowCase or in Provisioning Result.
+   * This method will return Map of error messages with key "ApplicationName_Operation:"
+   **/
+  public Map getWorkflowFailures(WorkflowContext wfcontext)
+  {
+    log.debug("Inside getWorkflowFailures method");
+
+    Map messageMap = new HashMap();
+    List messageTypes= new ArrayList(Arrays.asList(Message.Type.Error,Message.Type.Warn));
+
+    try{		
+      /*if(null != wfcontext)
+      {
+        List messages = null;
+        if(null != wfcontext.getWorkflowCase())
+        {
+          messages = wfcontext.getWorkflowCase().getMessages();
+          log.debug("messages"+messages);
+          if(!Util.isEmpty(messages))
+          {
+            Set messageSet = new HashSet();
+            for(Message message : messages)
+            {
+              if(messageTypes.contains(message.getType()))
+              {
+                messageSet.add(message.getLocalizedMessage());
+              }
+            }
+            log.debug("messageSet :"+messageSet);
+            if(!Util.isEmpty(messageSet))
+              messageMap.put(wfcontext.getWorkflowCase().getName(),messageSet);
+          }
+        }
+      }*/
+
+      //Loop through all the plans and get error and warning messages if the Provisioning Result is Failed or Retry.
+
+      ProvisioningProject project = wfcontext.getVariable("project");
+      if(null != project)
+      {	
+        log.debug("project"+project.toXml());
+
+        List plans = project.getPlans();
+        log.debug("plans :"+plans);
+
+        if(!Util.isEmpty(plans))
+        {
+          for(ProvisioningPlan plan : plans)
+          {
+            List accountsRequests = plan.getAccountRequests();
+            log.debug("accountsRequests:"+accountsRequests);
+
+            if(!Util.isEmpty(accountsRequests))
+            {
+              for(AccountRequest accountRequest : accountsRequests)
+              {
+                log.debug("accountRequest:"+accountRequest.toXml());
+                Set messageSet = new HashSet();
+                
+                ProvisioningResult result = accountRequest.getResult();
+                log.debug("accountRequest_results:"+result);
+
+
+
+                if(null != result){ 
+                  log.debug("ProvisioningResult in account request:"+result.toXml());
+                  log.debug("status in account request:"+result.getStatus());
+                  if(null != result.getStatus() && (ProvisioningResult.STATUS_FAILED.equals(result.getStatus()) || ProvisioningResult.STATUS_RETRY.equals(result.getStatus())))
+                {
+                  
+                  List errorMessages = result.getErrors();
+                  List warnMessages = result.getWarnings();
+
+                  if(!Util.isEmpty(errorMessages))
+                  {
+                    for(Message message : errorMessages)
+                    {
+                      if(messageTypes.contains(message.getType()))
+                      {
+                        messageSet.add(message.getLocalizedMessage());
+                      }
+                    }
+                  }
+                  if(!Util.isEmpty(warnMessages))
+                  {
+                    for(Message message : warnMessages)
+                    {
+                      if(messageTypes.contains(message.getType()))
+                      {
+                        messageSet.add(message.getLocalizedMessage());
+                      }
+                    }
+                  }
+
+                  messageMap.put(accountRequest.getApplicationName()+"_Operation:"+accountRequest.getOp().toString(),messageSet);
+                }
+              }
+
+              }
+            }
+
+            /*ProvisioningResult planResult = plan.getResult();
+            if(null != planResult)
+            {
+              log.debug("ProvisioningResult in Plan:"+planResult.toXml());
+              log.debug("status in Plan:"+planResult.getStatus());
+              if (null != planResult.getStatus() && (ProvisioningResult.STATUS_FAILED.equals(planResult.getStatus()) || ProvisioningResult.STATUS_RETRY.equals(planResult.getStatus))) {
+                Set messageSet = new HashSet();
+                log.debug("ProvisioningResult:"+planResult.toXml());
+                List errorMessages = planResult.getErrors();
+                List warnMessages = planResult.getWarnings();
+
+                if(!Util.isEmpty(errorMessages))
+                {
+                  for(Message message : errorMessages)
+                  {
+                    if(messageTypes.contains(message.getType()))
+                    {
+                      messageSet.add(message.getLocalizedMessage());
+                    }
+                  }
+                }
+                if(!Util.isEmpty(warnMessages))
+                {
+                  for(Message message : warnMessages)
+                  {
+                    if(messageTypes.contains(message.getType()))
+                    {
+                      messageSet.add(message.getLocalizedMessage());
+                    }
+                  }
+                }
+                messageMap.put(String.join(",", plan.getApplicationNames()),messageSet);
+              }
+            }*/
+          }
+        }
+      }          
+      log.debug("messageMap :"+messageMap);
+      return messageMap;
+
+    }
+    catch(GeneralException e)
+    {
+      log.error("error in getWorkflowFailures"+e);
+    }    
+  }
+
+  public Map emailArgumentsList (String emailTemplate, Identity identityObject, String notifyGroup, Map argumentsMap) {
+    if (log.isTraceEnabled()) {
+      log.trace("Entered to Alpha-Rule-Generic-RuleLibrary - emailArgumentsList method!!!");
+    }
+    log.debug("Alpha-Rule-Generic-RuleLibrary - emailArgumentsList -> EmailTemplate : "+emailTemplate);
+
+    String managerEmail = null;
+    Identity validManager = null;
+    validManager = getValidManagerRecursive(context,identityObject,"spadmin");
+    managerEmail =  validManager.getName();
+    log.debug("Alpha-Rule-Generic-RuleLibrary - emailArgumentsList -> Manager : "+managerEmail);
+
+    Map emailArguments = new HashMap();
+
+    if (notifyGroup != null) {
+      emailArguments.put("to", notifyGroup);
+      emailArguments.put("cc", managerEmail);
+      emailArguments.put("emailTemplate", emailTemplate);
+      if (argumentsMap != null) {
+        emailArguments.put("argumentsMap", argumentsMap);
+      }
+    }
+    else {
+      emailArguments.put("to", managerEmail);
+      emailArguments.put("emailTemplate", emailTemplate);
+    }
+
+    log.debug("Alpha-Rule-Generic-RuleLibrary - emailArgumentsList -> Final EmailArguments : "+emailArguments);
+
+    if (identityObject != null) {
+      logger.debug("Alpha-Rule-Generic-RuleLibrary - emailArgumentsList -> Decaching identity object");
+      context.decache(identityObject);
+    }
+    if (log.isTraceEnabled()) {
+      log.trace("Alpha-Rule-Generic-RuleLibrary - emailArgumentsList method Ended!!!");
+    }
+    return emailArguments;
+  }
+
+  /*
+   *This methis calculates the Users OU based on the Division and Location 
+   */
+  public String getUserOU(String identityName)
+  {
+    Identity identity = context.getObjectByName(Identity.class, identityName);
+    return getUserOU(identity);
+
+  }
+
+  public String getUserOU(Identity identity)
+  {
+    //Logic to calculate DN. Set OU path based in employeeType, and referring Alpha-Custom-Joiner OU Mappings Custom Object to set OU based on Department and Location 
+
+    String employeeType = identity.getAttribute("userType");
+    String userDept = identity.getAttribute("department");
+    String userLocation = identity.getAttribute("city");
+    String departmentOU = "";
+    String locationOU = "";
+    String typeOU = "";
+    String baseOU = "";
+
+    //TODO: what if the usertype is not correct ot null. Shall we create a temp OU to place the users???
+    if(null!=employeeType)
+    {
+      if("Employee".equalsIgnoreCase(employeeType))
+        typeOU = "Permanent Employees";
+      else if("Contractor".equalsIgnoreCase(employeeType))
+        typeOU = "Contractors";
+    }
+    // call custom object to get the Department and Location OU based in Users dept and location
+    Custom customObj = context.getObject(Custom.class,"Alpha-Custom-Joiner OU Mappings");
+
+    if(null!=customObj)
+    {
+      baseOU = customObj.get("baseOU");
+
+      Map deptMap = customObj.get("Department");
+      if(null != deptMap)
+      {
+        if(null != deptMap.get(userDept))
+          departmentOU = deptMap.get(userDept);
+      }
+
+      Map locationMap = customObj.get("Location");
+      if(null != locationMap)
+      {
+        if(null != locationMap.get(userLocation))
+          locationOU = locationMap.get(userLocation);
+      }
+
+    }
+
+    String OU = "OU=" + departmentOU + ",OU=" + locationOU + ",OU=" + typeOU + ",OU=Users,OU=" + baseOU+ ",DC=tcs,DC=sailpointiamcoe,DC=com";
+
+    log.debug("distinguishedName is :"+OU);
+
+    return OU;
+  }
+  
+  /*
+   *This methos generates password based on policyName passed and return the password in String
+   */
+  public String generateNewPassword(String policyName)
+  {
+    import sailpoint.object.PasswordPolicy;
+    import sailpoint.api.PasswordGenerator;
+
+    PasswordPolicy policy = context.getObjectByName(PasswordPolicy.class, policyName);
+    String password = new PasswordGenerator(context).generatePassword(policy);
+
+    return password;
+  }
+
+  ]]></Source>
+</Rule>

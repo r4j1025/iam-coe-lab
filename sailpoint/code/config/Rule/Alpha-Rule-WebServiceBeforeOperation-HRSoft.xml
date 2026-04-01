@@ -1,0 +1,80 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Alpha-Rule-WebServiceBeforeOperation-HRSoft" type="WebServiceBeforeOperationRule">
+  <Description>This rule is used by the  Web Services connector before performing any operation like testconnection, aggregation etc. Here user can update the existing Endpoint object using a key 'updatedEndPoint' and along with it save required attribute in the application using key 'connectorStateMap'. If user just want to return Endpoint (requestEndPoint) no need to create map and update the key values. But if a user wants to return both Endpoint (requestEndPoint) and connectorStateMap who's values will be eventually saved in the application. Create a Map and add both using respective key's.</Description>
+  <Signature returnType="Object">
+    <Inputs>
+      <Argument name="log">
+        <Description>
+          The log object associated with the SailPointContext.
+        </Description>
+      </Argument>
+      <Argument name="context">
+        <Description>
+          A sailpoint.api.SailPointContext object that can be used to query the database if necessary.
+        </Description>
+      </Argument>
+      <Argument name="application">
+        <Description>The application whose data file is being processed.</Description>
+      </Argument>
+      <Argument name="requestEndPoint">
+        <Description>The current request information contain header, body, context url, method type, response attribute map, 
+          successful response code
+        </Description>
+      </Argument>
+      <Argument name="oldResponseMap">
+        <Description>earlier response object </Description>
+      </Argument>
+      <Argument name="restClient">
+        <Description>REST Client Object</Description>
+      </Argument>
+    </Inputs>
+    <Returns>
+      <Argument name="Endpoint or Updated Map which contains requestEndPoint and connectorStateMap">
+        <Description>Updated Endpoint or information Map which contains endpoint and connectorStateMap</Description>
+      </Argument>
+    </Returns>
+  </Signature>
+  <Source><![CDATA[
+
+  import java.util.Map;
+  import java.util.HashMap;
+
+  import org.apache.log4j.Logger;
+
+  Logger logger = Logger.getLogger("iiq.alpha.Alpha-Rule-WebServiceBeforeOperation-HRSoft");
+  if (logger.isTraceEnabled()) {
+    logger.trace("Entered to Alpha-Rule-WebServiceBeforeOperation-HRSoft!!");
+  }
+
+  Map contextAttributeMap = null;
+  logger.debug("Context Property Attribute Map : "+context.getProperty("contextAttributeMap"));
+  contextAttributeMap = context.getProperty("contextAttributeMap");
+  String firstName = null;
+  firstName = (String) contextAttributeMap.get("#plan.firstName#");
+  logger.debug("First Name from Context : "+firstName);
+
+  if (requestEndPoint.getOperationType().equalsIgnoreCase("Add Entitlement")) {
+    logger.debug(requestEndPoint.getOperationType()+" Operation starts");
+
+    Map bodyMap = requestEndPoint.getBody();
+    String requestBody = bodyMap.get("jsonBody");
+
+    logger.debug("Request Body - Before changes : "+requestBody);
+
+    requestBody = requestBody.replace("#plan.firstName#", firstName);
+
+    logger.debug("Request Body - After changes : "+requestBody);
+
+    Map newBodyMap = new HashMap();
+    newBodyMap.put("jsonBody", requestBody);
+    newBodyMap.put("bodyFormat", "raw");
+    requestEndPoint.setBody(newBodyMap);
+  }
+
+  if (logger.isTraceEnabled()) {
+    logger.trace("Alpha-Rule-WebServiceBeforeOperation-HRSoft Rule is Ended!!");
+  }
+
+  ]]></Source>
+</Rule>

@@ -16,6 +16,21 @@ services:
     networks:
       - localnet
 
+  tomcat:
+    build: ./tomcat
+    container_name: tomcat_apps
+    env_file:
+      - ./.env
+    ports:
+      - "8081:8080"
+    # volumes:
+      # WAR deployment
+      # - ./tomcat/webapps:/usr/local/tomcat/webapps
+      # Optional config override
+      # - ./tomcat/conf:/usr/local/tomcat/conf
+    networks:
+      - localnet
+
 networks:
   localnet:
     external:

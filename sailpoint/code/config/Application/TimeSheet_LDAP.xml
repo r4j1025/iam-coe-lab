@@ -1,0 +1,216 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Application PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Application connector="sailpoint.connector.LDAPConnector" featuresString="AUTHENTICATE, MANAGER_LOOKUP, SEARCH, PROVISIONING, SYNC_PROVISIONING" icon="directory2Icon" name="TimeSheet_LDAP" profileClass="" type="LDAP">
+  <AccountCorrelationConfig>
+    <Reference class="sailpoint.object.CorrelationConfig" name="Alpha-TimeSheetLDAP-Correlation"/>
+  </AccountCorrelationConfig>
+  <Attributes>
+    <Map>
+      <entry key="Alpha-ApplicationExtended-Attribute-Delete-Account">
+        <value>
+          <Boolean/>
+        </value>
+      </entry>
+      <entry key="acctAggregationEnd">
+        <value>
+          <Date>1624287050971</Date>
+        </value>
+      </entry>
+      <entry key="acctAggregationStart">
+        <value>
+          <Date>1624287049853</Date>
+        </value>
+      </entry>
+      <entry key="afterProvisioningRule"/>
+      <entry key="authSearchAttributes">
+        <value>
+          <List>
+            <String>cn</String>
+          </List>
+        </value>
+      </entry>
+      <entry key="authorizationType" value="simple"/>
+      <entry key="beforeProvisioningRule"/>
+      <entry key="birthrightApplication">
+        <value>
+          <Boolean>true</Boolean>
+        </value>
+      </entry>
+      <entry key="compositeDefinition"/>
+      <entry key="filterString" value="cn == &quot;TimeSheetAdmin&quot;"/>
+      <entry key="group.filterString"/>
+      <entry key="group.iterateSearchFilter"/>
+      <entry key="group.searchDN" value="ou=groups,ou=trainee1,dc=iamcoe,dc=example,dc=com"/>
+      <entry key="group.searchScope" value="SUBTREE"/>
+      <entry key="groupEntitlementAttr" value="groups"/>
+      <entry key="groupMemberSearchDN" value="ou=groups,ou=trainee1,dc=iamcoe,dc=example,dc=com"/>
+      <entry key="host" value="localhost"/>
+      <entry key="nativeChangeDetectionAttributeScope" value="entitlements"/>
+      <entry key="nativeChangeDetectionAttributes"/>
+      <entry key="nativeChangeDetectionEnabled">
+        <value>
+          <Boolean/>
+        </value>
+      </entry>
+      <entry key="nativeChangeDetectionOperations"/>
+      <entry key="pageSize" value="100"/>
+      <entry key="password" value="1:ACP:Q2xkcNtO8T7nIzgXgC3pHMEL3DgV087vk/HAv2jpKn4="/>
+      <entry key="passwordAttr" value="userPassword"/>
+      <entry key="port" value="10389"/>
+      <entry key="searchDN" value="ou=users,ou=trainee1,dc=iamcoe,dc=example,dc=com"/>
+      <entry key="searchScope" value="SUBTREE"/>
+      <entry key="sysDescriptions">
+        <value>
+          <Map>
+            <entry key="en_US"/>
+          </Map>
+        </value>
+      </entry>
+      <entry key="templateApplication" value="LDAP Template"/>
+      <entry key="useSSL">
+        <value>
+          <Boolean/>
+        </value>
+      </entry>
+      <entry key="user" value="uid=admin,ou=system"/>
+    </Map>
+  </Attributes>
+  <Owner>
+    <Reference class="sailpoint.object.Identity" name="spadmin"/>
+  </Owner>
+  <ProvisioningForms>
+    <Form name="Alpha-ProvisioningPolicy-TimeSheet_LDAP-CreateAccount" objectType="account" type="Create">
+      <Attributes>
+        <Map>
+          <entry key="pageTitle" value="Alpha-ProvisioningPolicy-TimeSheet_LDAP-CreateAccount"/>
+        </Map>
+      </Attributes>
+      <Section>
+        <Field displayName="User DN" name="dn" type="string">
+          <Script>
+            <Source><![CDATA[
+              import sailpoint.object.Custom;
+              
+              Custom joinerCustom = context.getObjectByName(Custom.class, "Alpha-Custom-Joiner OU Mappings");
+              String userDN = null;
+              if (joinerCustom != null) {
+              	String baseOU = joinerCustom.getAttributes().get("TimeSheetBaseOu");
+              	userDN = "cn="+identity.getFirstname()+","+baseOU;
+              }
+              return userDN;
+            ]]></Source>
+          </Script>
+        </Field>
+        <Field displayName="User Password" name="userPassword" type="string">
+          <Script>
+            <Source><![CDATA[return identity.getFirstname();]]></Source>
+          </Script>
+        </Field>
+        <Field displayName="First Name" name="cn" type="string">
+          <Script>
+            <Source><![CDATA[return identity.getFirstname();]]></Source>
+          </Script>
+        </Field>
+        <Field displayName="Employee ID" name="givenName" type="string">
+          <Script>
+            <Source><![CDATA[return identity.getName();]]></Source>
+          </Script>
+        </Field>
+        <Field displayName="Last Name" name="sn" type="string">
+          <Script>
+            <Source><![CDATA[return identity.getLastname();]]></Source>
+          </Script>
+        </Field>
+        <Field displayName="Department" name="departmentName" type="string">
+          <Script>
+            <Source><![CDATA[return identity.getAttribute("department");]]></Source>
+          </Script>
+        </Field>
+        <Field displayName="Display Name" name="displayName" type="string">
+          <Script>
+            <Source><![CDATA[return identity.getDisplayName();]]></Source>
+          </Script>
+        </Field>
+        <Field displayName="Email ID" name="mail" type="string">
+          <RuleRef>
+            <Reference class="sailpoint.object.Rule" name="Alpha-ProvisioningPolicy-TimeSheetLDAP-Email-Field-Rule"/>
+          </RuleRef>
+        </Field>
+        <Field displayName="Location" name="location" type="string">
+          <Script>
+            <Source><![CDATA[return identity.getAttribute("city");]]></Source>
+          </Script>
+        </Field>
+        <Field displayName="User Status" name="st" type="string">
+          <Script>
+            <Source><![CDATA[return identity.getAttribute("Status");]]></Source>
+          </Script>
+        </Field>
+        <Field displayName="Object Class" name="objectClass" type="list">
+          <Script>
+            <Source><![CDATA[
+              import sailpoint.object.Custom;
+              import java.util.*;
+              
+              Custom joinerCustom = context.getObjectByName(Custom.class, "Alpha-Custom-Joiner OU Mappings");
+              List objectClasses = null;
+              if (joinerCustom != null) {
+              	objectClasses = new ArrayList();
+              	objectClasses = joinerCustom.getAttributes().get("TimeSheetObjectClasses");
+              }
+              return objectClasses;
+            ]]></Source>
+          </Script>
+        </Field>
+      </Section>
+    </Form>
+  </ProvisioningForms>
+  <Schemas>
+    <Schema displayAttribute="givenName" identityAttribute="dn" instanceAttribute="" nativeObjectType="inetOrgPerson" objectType="account">
+      <AttributeDefinition name="cn" type="string">
+        <Description>common name(s) for which the entity is known by</Description>
+      </AttributeDefinition>
+      <AttributeDefinition name="dn" type="string">
+        <Description>distinguished name for which the entity is known by</Description>
+      </AttributeDefinition>
+      <AttributeDefinition name="departmentName" type="string">
+        <Description>identifies a department within an organization</Description>
+      </AttributeDefinition>
+      <AttributeDefinition name="displayName" type="string">
+        <Description>preferred name to be used when displaying entries</Description>
+      </AttributeDefinition>
+      <AttributeDefinition name="givenName" type="string">
+        <Description>Employee ID of the user</Description>
+      </AttributeDefinition>
+      <AttributeDefinition name="location" type="string">
+        <Description>location of the user</Description>
+      </AttributeDefinition>
+      <AttributeDefinition name="st" type="string">
+        <Description>status of the user</Description>
+      </AttributeDefinition>
+      <AttributeDefinition multi="true" name="objectClass" type="string">
+        <Description>object classes of the entity</Description>
+      </AttributeDefinition>
+      <AttributeDefinition entitlement="true" managed="true" multi="true" name="groups" schemaObjectType="group" type="string">
+        <Description>List of groups a user is a member</Description>
+      </AttributeDefinition>
+      <AttributeDefinition name="mail" type="string">
+        <Description>Email ID of the user</Description>
+      </AttributeDefinition>
+    </Schema>
+    <Schema descriptionAttribute="" displayAttribute="cn" featuresString="PROVISIONING" identityAttribute="dn" instanceAttribute="" nativeObjectType="groupOfUniqueNames" objectType="group">
+      <AttributeDefinition name="cn" type="string">
+        <Description>common name(s) for which the entity is known by</Description>
+      </AttributeDefinition>
+      <AttributeDefinition name="dn" type="string">
+        <Description>Directory Path</Description>
+      </AttributeDefinition>
+      <Attributes>
+        <Map>
+          <entry key="groupMemberAttribute" value="uniqueMember"/>
+        </Map>
+      </Attributes>
+    </Schema>
+  </Schemas>
+  <ApplicationScorecard/>
+</Application>

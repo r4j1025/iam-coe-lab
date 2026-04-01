@@ -1,0 +1,120 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Alpha-Rule-IdentityAttribute-Email" type="IdentityAttribute">
+  <Description>Identity attribute rules are used when the value is not simply a copy of an application account attribute value.  A transformation may be necessary on the account attribute, or several account attributes may need to be combined to produce the identity attribute. This rule can be called in two ways: as a global mapping rule and an application mapping rule.  A global mapping rule is called whenever the identity is refreshed.  The rule can look at any account attributes.  An application mapping rule is called only when the identity contains an account link for that application, this link is passed in the "link" argument which is not passed in global mapping rules.</Description>
+  <Signature returnType="String">
+    <Inputs>
+      <Argument name="log">
+        <Description>
+          The log object associated with the SailPointContext.
+        </Description>
+      </Argument>
+      <Argument name="context">
+        <Description>
+          A sailpoint.api.SailPointContext object that can be used to query the database if necessary.
+        </Description>
+      </Argument>
+      <Argument name="environment" type="Map">
+        <Description>
+          Arguments passed to the aggregation or refresh task.
+        </Description>
+      </Argument>
+      <Argument name="identity">
+        <Description>
+          The Identity object that represents the user that is being aggregated.
+        </Description>
+      </Argument>
+      <Argument name="attributeDefinition">
+        <Description>
+          The AttributeDefinition object for this attribute.
+        </Description>
+      </Argument>
+      <Argument name="link">
+        <Description>
+          The Link object from the Identity, if this is an application mapping rule.  For global mapping rules this will be void.
+        </Description>
+      </Argument>
+      <Argument name="attributeSource">
+        <Description>
+          The AttributeSource object.
+        </Description>
+      </Argument>
+      <Argument name="oldValue">
+        <Description>
+          The original value of the application account attribute.
+        </Description>
+      </Argument>
+    </Inputs>
+    <Returns>
+      <Argument name="attributeValue">
+        <Description>
+          The value of the attribute that should be populated. The rule should return this value.
+        </Description>
+      </Argument>
+    </Returns>
+  </Signature>
+  <Source><![CDATA[
+
+  import org.apache.log4j.Logger;
+
+  import sailpoint.api.SailPointContext;
+  import sailpoint.api.SailPointFactory;
+  import sailpoint.object.Filter;
+  import sailpoint.object.Identity;
+  import sailpoint.object.QueryOptions;
+  import sailpoint.tools.GeneralException;
+  import sailpoint.tools.Util;
+
+  Logger logger = Logger.getLogger("IAM_COE_BIRTHRIGHT_PROVISIONING");
+  if (logger.isTraceEnabled()) {
+    logger.trace("Entered to IAMCOE_EMAIL_ATTRIBUTE_RULE!!!");
+  }
+  String finalEmail = null;
+  finalEmail = identity.getEmail();
+  logger.debug("IAMCOE_EMAIL_ATTRIBUTE_RULE -> Mail from user : "+finalEmail);
+  if (finalEmail != null) {
+    logger.debug("IAMCOE_EMAIL_ATTRIBUTE_RULE -> FinalEmail (We are in 1) : "+finalEmail);
+    return finalEmail;
+  }
+
+  String firstName = identity.getFirstname();
+  String lastName = identity.getLastname();
+  logger.debug("IAMCOE_EMAIL_ATTRIBUTE_RULE -> Firstname from user : "+firstName);
+  logger.debug("IAMCOE_EMAIL_ATTRIBUTE_RULE -> Lastname from user : "+lastName);
+  if (Util.isNotNullOrEmpty(firstName) && Util.isNotNullOrEmpty(lastName)) {
+    String domain = "@coe.com";
+    String initialEmail = firstName +"."+ lastName;
+    finalEmail = initialEmail + domain;
+    logger.debug("IAMCOE_EMAIL_ATTRIBUTE_RULE -> InitialEmail : "+initialEmail);
+
+    QueryOptions queryOptions = new QueryOptions();
+    Filter filter1 = Filter.ignoreCase(Filter.like("email", initialEmail, Filter.MatchMode.START));
+    queryOptions.add(filter1);
+    int totalObjects = context.countObjects(Identity.class, queryOptions);
+    logger.debug("IAMCOE_EMAIL_ATTRIBUTE_RULE -> TotalObjects of Filter1 : "+totalObjects);
+
+    if (totalObjects == 0) {
+      logger.debug("IAMCOE_EMAIL_ATTRIBUTE_RULE -> FinalEmail (We are in 2) : "+finalEmail);
+      return finalEmail;
+    }
+    else {
+      int count = totalObjects;
+      do {
+        finalEmail = initialEmail +String.valueOf(count)+ domain;
+        Filter filter2 = Filter.ignoreCase(Filter.eq("email", finalEmail));
+        queryOptions.add(filter2);
+        totalObjects = context.countObjects(Identity.class, queryOptions);
+        logger.debug("IAMCOE_EMAIL_ATTRIBUTE_RULE -> TotalObjects of Filter2 : "+totalObjects);
+        count++;
+      }
+      while (totalObjects > 0);
+      logger.debug("IAMCOE_EMAIL_ATTRIBUTE_RULE -> FinalEmail (We are in 3) : "+finalEmail);
+      return finalEmail;
+    }
+  }
+  if (logger.isTraceEnabled()) {
+    logger.trace("IAMCOE_EMAIL_ATTRIBUTE_RULE Ended!!!");
+  }
+
+  ]]></Source>
+</Rule>

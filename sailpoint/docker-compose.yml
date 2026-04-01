@@ -21,7 +21,7 @@ services:
     ports:
       - "8080:8080"
 
-    volumes:
+    # volumes:
       # --------------------------------------
       # Cross-platform safe bind mount
       # Works on:
@@ -31,7 +31,7 @@ services:
       #
       # Use relative path (recommended)
       # --------------------------------------
-      - ./config:/config:ro
+      # - ./config:/config:ro/
 
       # --------------------------------------
       # OPTIONAL: Absolute path examples

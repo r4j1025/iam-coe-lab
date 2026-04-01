@@ -1,0 +1,134 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Form PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Form name="Alpha-Form-Immediate-Terminating-Users" type="Workflow">
+  <Attributes>
+    <Map>
+      <entry key="pageTitle" value="Alpha Immediate Terminating Users"/>
+    </Map>
+  </Attributes>
+  <Description>This custom form used for terminating the users.</Description>
+  <Section columns="2" label="User_Info" name="UserDisplayDetails" type="datatable">
+    <Field columnSpan="1" displayName="Display Name" name="displayName" type="string">
+      <Attributes>
+        <Map>
+          <entry key="readOnly" value="true"/>
+        </Map>
+      </Attributes>
+      <Script>
+        <Source><![CDATA[
+
+          import org.apache.log4j.Logger;
+
+          import sailpoint.object.Identity;
+
+          Logger logger = Logger.getLogger("IAM_COE_BIRTHRIGHT_PROVISIONING");
+          if (logger.isTraceEnabled()) {
+          logger.trace("Alpha-Form-Immediate-Terminating-Users -> Entered to displayName Field (UserDisplayDetails Section)!!!");
+          }
+          String DisplayName = null;
+          Identity identityObject = context.getObjectByName(Identity.class, terminateIdentity);
+          logger.debug("Alpha-Form-Immediate-Terminating-Users - displayName Field (UserDisplayDetails Section) -> DisplayName : "+identityObject.getDisplayName());
+          DisplayName = identityObject.getDisplayName();
+          if (identityObject != null) {
+          context.decache(identityObject);
+          }
+          return DisplayName;
+
+        ]]></Source>
+      </Script>
+    </Field>
+    <Field columnSpan="1" displayName="Email" name="email" type="string">
+      <Attributes>
+        <Map>
+          <entry key="readOnly" value="true"/>
+        </Map>
+      </Attributes>
+      <Script>
+        <Source><![CDATA[
+
+          import org.apache.log4j.Logger;
+
+          import sailpoint.object.Identity;
+
+          Logger logger = Logger.getLogger("IAM_COE_BIRTHRIGHT_PROVISIONING");
+          if (logger.isTraceEnabled()) {
+          logger.trace("Alpha-Form-Immediate-Terminating-Users -> Entered to email Field (UserDisplayDetails Section)!!!");
+          }
+          String EmailValue = null;
+          Identity identityObject = context.getObjectByName(Identity.class, terminateIdentity);
+          logger.debug("Alpha-Form-Immediate-Terminating-Users - email Field (UserDisplayDetails Section) -> Email : "+identityObject.getEmail());
+          EmailValue = identityObject.getEmail();
+          if (identityObject != null) {
+          context.decache(identityObject);
+          }
+          return EmailValue;
+
+        ]]></Source>
+      </Script>
+    </Field>
+  </Section>
+  <Section columns="2" label="Manager_Info" name="ManagerDisplayDetails" type="datatable">
+    <Field columnSpan="1" displayName="Display Name" name="managerDisplayName" type="string">
+      <Attributes>
+        <Map>
+          <entry key="readOnly" value="true"/>
+        </Map>
+      </Attributes>
+      <Script>
+        <Source><![CDATA[
+
+          import org.apache.log4j.Logger;
+
+          import sailpoint.object.Identity;
+
+          Logger logger = Logger.getLogger("IAM_COE_BIRTHRIGHT_PROVISIONING");
+          if (logger.isTraceEnabled()) {
+          logger.trace("Alpha-Form-Immediate-Terminating-Users -> Entered to managerDisplayName Field (ManagerDisplayDetails Section)!!!");
+          }
+          String DisplayName = null;
+          Identity identityObject = context.getObjectByName(Identity.class, terminateIdentity);
+          Identity managerIdentity = identityObject.getManager();
+          logger.debug("Alpha-Form-Immediate-Terminating-Users - managerDisplayName Field (ManagerDisplayDetails Section) -> Manager DisplayName : "+managerIdentity.getDisplayName());
+          DisplayName = managerIdentity.getDisplayName();
+          if (identityObject != null) {
+          context.decache(identityObject);
+          }
+          return DisplayName;
+
+        ]]></Source>
+      </Script>
+    </Field>
+    <Field columnSpan="1" displayName="Email" name="managerEmail" type="string">
+      <Attributes>
+        <Map>
+          <entry key="readOnly" value="true"/>
+        </Map>
+      </Attributes>
+      <Script>
+        <Source><![CDATA[
+
+          import org.apache.log4j.Logger;
+
+          import sailpoint.object.Identity;
+
+          Logger logger = Logger.getLogger("IAM_COE_BIRTHRIGHT_PROVISIONING");
+          if (logger.isTraceEnabled()) {
+          logger.trace("Alpha-Form-Immediate-Terminating-Users -> Entered to managerEmail Field (ManagerDisplayDetails Section)!!!");
+          }
+          String EmailValue = null;
+          Identity identityObject = context.getObjectByName(Identity.class, terminateIdentity);
+          Identity managerIdentity = identityObject.getManager();
+          logger.debug("Alpha-Form-Immediate-Terminating-Users - managerEmail Field (ManagerDisplayDetails Section) -> Email : "+managerIdentity.getEmail());
+          EmailValue = managerIdentity.getEmail();
+          if (identityObject != null) {
+          context.decache(identityObject);
+          }
+          return EmailValue;
+
+        ]]></Source>
+      </Script>
+    </Field>
+  </Section>
+  <Button action="back" label="Cancel"/>
+  <Button action="next" label="Submit" parameter="isSubmitted" value="true"/>
+</Form>

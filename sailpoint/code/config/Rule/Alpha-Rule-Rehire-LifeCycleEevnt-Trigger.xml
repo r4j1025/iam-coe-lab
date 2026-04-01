@@ -1,0 +1,88 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Alpha-Rule-Rehire-LifeCycleEevnt-Trigger" type="IdentityTrigger">
+  <Description>This rule can be used for Certification Events that use rule triggers. The previousIdentity and newIdentity hold snapshots of the identity before the update has occurred and the state of the identity after the update, respectively.</Description>
+  <Signature returnType="boolean">
+    <Inputs>
+      <Argument name="log">
+        <Description>
+          The log object associated with the SailPointContext.
+        </Description>
+      </Argument>
+      <Argument name="context">
+        <Description>
+          A sailpoint.api.SailPointContext object that can be used to query the database if necessary.
+        </Description>
+      </Argument>
+      <Argument name="previousIdentity">
+        <Description>
+          The identity before the refresh/aggregation (this will be null when an
+          identity is created).
+        </Description>
+      </Argument>
+      <Argument name="newIdentity">
+        <Description>
+          The identity after the refresh/aggregation (this will be null when an
+          identity is deleted).
+        </Description>
+      </Argument>
+    </Inputs>
+    <Returns>
+      <Argument name="result">
+        <Description>
+          A boolean describing the result of the rule.
+        </Description>
+      </Argument>
+    </Returns>
+  </Signature>
+  <Source><![CDATA[
+  import org.apache.log4j.Logger;
+  import java.util.concurrent.TimeUnit;
+  import sailpoint.tools.Util;
+  import java.text.SimpleDateFormat;
+  import java.util.Date;
+
+  Logger log = Logger.getLogger("iiq.alpha.Alpha-Rule-Rehire-LifeCycleEevnt-Trigger");
+  log.debug("Alpha-Rule-Rehire-LifeCycleEevnt-Trigger - STARTS");
+
+  boolean shouldTrigger = false;
+
+
+  if(null != previousIdentity @and null != newIdentity)
+  {
+    log.debug("oldID"+previousIdentity.toXml());
+    log.debug("newID"+newIdentity.toXml());
+
+    String oldStatus = previousIdentity.getAttribute("Status");
+    String newStatus = newIdentity.getAttribute("Status");
+    String terminationDate = previousIdentity.getAttribute("terminationDate");
+
+    if(null != terminationDate)
+    {
+      log.debug("oldStatus"+oldStatus);
+      log.debug("newStatus"+newStatus);
+      log.debug("terminationDate"+terminationDate);
+
+      SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+      Date termDate = sdf.parse(terminationDate);
+      Date todaysDate = new Date();
+
+      long diffInMillies = Math.abs(todaysDate.getTime() - termDate.getTime());
+      long diff = TimeUnit.DAYS.convert(diffInMillies, TimeUnit.MILLISECONDS);
+      log.debug("diff:"+diff);
+
+      if(null != oldStatus @and null != newStatus @and newStatus.equalsIgnoreCase("Active") @and oldStatus.equalsIgnoreCase("InActive") @and diff < 90 )
+      {
+        shouldTrigger = true;
+      }
+    }
+  }
+
+  log.debug("Alpha-Rule-Rehire-LifeCycleEevnt-Trigger - ENDS");
+  return shouldTrigger;
+
+
+
+
+  ]]></Source>
+</Rule>

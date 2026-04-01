@@ -1,0 +1,142 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Alpha-Rule-Joiner-RuleLibrary">
+  <Source><![CDATA[
+ 	import java.util.*;
+	import sailpoint.tools.*;
+  import sailpoint.api.*;
+  
+	import sailpoint.object.Identity;
+	import sailpoint.api.IdentityService;
+	import sailpoint.object.Application;
+  
+	import sailpoint.object.QueryOptions;
+	import sailpoint.object.Filter;
+  
+	import sailpoint.object.ProvisioningPlan;
+	import sailpoint.object.AccountRequest;
+	import sailpoint.object.Workflow;
+  
+	import javax.naming.*;
+	import javax.naming.directory.*;
+	import org.apache.log4j.Logger;
+	
+	 Logger log = Logger.getLogger("iiq.alpha.Alpha-Rule-Joiner-RuleLibrary");
+	
+	/*
+	*Search Active Directory for the UPN uniqueness.
+	*If the same UPN found in AD, append the numeric and search till the unique UPN is found.
+	*/
+	public Map generateUniqueUPN(String firstName,String lastName)
+	{
+    log.debug("inside generateUniqueUPN method in Alpha-Rule-Joiner-RuleLibrary");
+    
+		Application application = context.getObject(Application.class, "Alpha - Active Directory");
+		List dsList = (List)application.getAttributeValue("forestSettings");
+		log.warn("dsList"+dsList);
+		Map dsMap = (Map)dsList.get(0);
+		String server = dsMap.get("gcServer");
+		String authType =dsMap.get("authenticationType");
+		String user=dsMap.get("user");
+		String decryptedPassword = context.decrypt(dsMap.get("password"));
+
+		Hashtable env = new Hashtable();
+		env.put(Context.INITIAL_CONTEXT_FACTORY,"com.sun.jndi.ldap.LdapCtxFactory");
+		env.put(Context.PROVIDER_URL, "ldap://" + server);
+		env.put(Context.SECURITY_AUTHENTICATION, authType);
+		env.put(Context.SECURITY_PRINCIPAL,user);
+		env.put(Context.SECURITY_CREDENTIALS,decryptedPassword);
+		env.put(Context.REFERRAL, "follow");
+		// Initialize variables.
+		String CNN = "false";
+		int count=0;
+		
+		Map uniqueUPN = new HashMap();
+		// We build the actual ldap search context and pass in the environment variables.
+		InitialDirContext ctx1 = new InitialDirContext(env);
+		SearchControls searchControls = new SearchControls();
+		searchControls.setSearchScope(SearchControls.SUBTREE_SCOPE);
+		String[] array = new String[1];
+		array[0] = "name";
+		searchControls.setReturningAttributes(array); 
+		String searchBase= "DC=tcs,DC=sailpointiamcoe,DC=com"; // Change your Base DN as per need
+		String ristrictedChars = "['' '~`@#$%^*?]"; // Append the list of restricted char if needed
+		String searchString = "(|(userPrincipalName=" + firstName +"."+ lastName + "@tcs.sailpointiamcoe.com" + ")(userPrincipalName=" + firstName+"."+lastName +"@tcs.sailpointiamcoe.com"+ "))";
+		NamingEnumeration list = ctx1.search(searchBase,searchString, searchControls);
+		String lname = lastName;
+		
+		if(list.hasMore())
+		{
+			log.debug("UPN already exist in AD");
+			boolean notUnique = true;
+			while(notUnique)
+			{
+				count++;
+				lname = lastName+count;
+				String searchString = "(|(userPrincipalName=" + firstName+ "." + lname + "@tcs.sailpointiamcoe.com"+ ")(userPrincipalName=" + firstName+"."+lname +"@tcs.sailpointiamcoe.com" + "))";
+				//logger.debug("CNExists: search string set to: " + searchString);
+				NamingEnumeration list = ctx1.search(searchBase,searchString, searchControls);
+				if(list.hasMore())
+				{
+					continue;
+				}
+				else
+				{
+					notUnique=false;
+					uniqueUPN.put("userPrincipalName",(firstName+"."+ lname +"@tcs.sailpointiamcoe.com"));
+					log.warn("uniqueUPN: " + uniqueUPN);
+					return uniqueUPN;
+				}
+			}
+		}
+		else
+		{
+			log.debug("UPN is unique");
+			uniqueUPN.put("userPrincipalName",(firstName+"."+ lastName +"@tcs.sailpointiamcoe.com"));
+			log.warn("uniqueUPN: " + uniqueUPN);
+			return uniqueUPN;
+		}
+	}
+  
+  /*
+	*Loop through all the application having 'birthrightApplication' tag. Check if the Identity has that Application Link, If not add Create Account Request to Plan.
+	*/
+	public ProvisioningPlan getDynamicJoinerPlan(SailPointContext context, String identityName, Workflow workflow){
+		log.debug("Enter getDynamicJoinerPlan");
+		
+		ProvisioningPlan plan = workflow.get("plan");
+		if(plan == null)
+		{
+			plan = new ProvisioningPlan();
+		}
+	
+		Identity identity = context.getObjectByName(Identity.class, identityName);		
+		IdentityService is = new IdentityService(context);
+		
+		QueryOptions qo = new QueryOptions();
+		//Filter f1 = new Filter.notnull("birthrightApplication");
+		qo.addFilter(Filter.eq("birthrightApplication",true));
+		List birthRightApps = context.getObjects(Application.class,qo);
+		log.debug("birthRightAppList Count"+birthRightApps.size());
+		// Loop through each birthRight application, check if there is link and add Create Account request.
+		if(null != birthRightApps){
+			for(Application app : birthRightApps)
+			{
+				List appLinks = is.getLinks(identity, app);
+				if(appLinks == null || appLinks.size() == 0)
+				{
+					AccountRequest accReq = new AccountRequest();
+					accReq.setOperation(AccountRequest.Operation.Create);
+					accReq.setApplication(app.getName());
+					plan.add(accReq);
+				}
+			}
+		}
+		plan.setIdentity(identity);
+		
+		return plan;
+		
+	}
+
+  ]]></Source>
+</Rule>

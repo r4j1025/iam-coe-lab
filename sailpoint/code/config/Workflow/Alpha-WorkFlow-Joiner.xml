@@ -1,0 +1,306 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Workflow PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Workflow explicitTransitions="true" libraries="Identity" name="Alpha-WorkFlow-Joiner" type="IdentityLifecycle">
+  <Variable input="true" name="trigger">
+    <Description>The IdentityTrigger</Description>
+  </Variable>
+  <Variable input="true" name="event" transient="true">
+    <Description>The IdentityChangeEvent.  It can be used to build
+      the provisioning plan, but does not need to be
+      persisted with the case, so marked as transient.</Description>
+  </Variable>
+  <Variable input="true" name="identityName">
+    <Description>The name of the identity.</Description>
+  </Variable>
+  <Variable initializer="string:Joiner" name="flow">
+    <Description>The name of the LCM flow that launched this workflow..</Description>
+  </Variable>
+  <Variable initializer="LCM" input="true" name="source">
+    <Description>String version of sailpoint.object.Source to indicate
+      where the request originated.  Defaults to LCM.</Description>
+  </Variable>
+  <Variable initializer="string:true" name="trace">
+    <Description>Used for debugging this workflow and when set to true trace
+      will be sent to stdout.</Description>
+  </Variable>
+  <Variable editable="true" initializer="false" name="optimisticProvisioning">
+    <Description>Set to true to enable optimistic provisioning.  This will cause
+      changes to the entitlements compiled from role assignments to be
+      applied immediately to the identity cube rather than waiting
+      for the next refresh/reaggregation after the provisioning system
+      completes the request.</Description>
+  </Variable>
+  <Variable editable="true" initializer="true" name="foregroundProvisioning">
+    <Description>Normally provisioning is done in a step that uses the &amp;quot;background&amp;quot;
+      option to force the workflow to be suspend and be resumed in a
+      background task thread.  This prevents the browser session from
+      hanging since provision can sometimes take a long time.  For demos
+      and testing it can be better to do this in the foreground so that
+      provisioning will have been performed when control is returned to the
+      user.  This prevents having to run the Perform Maintenance task to
+      see the results of the request.</Description>
+  </Variable>
+  <Variable initializer="true" name="allowRequestsWithViolations">
+    <Description>If this variable is set to true, requesters will be able to proceed past
+      the Policy Violation Review form without taking any action on
+      policy violations resulting from the request. This is only relevant
+      if policyScheme=interactive.</Description>
+  </Variable>
+  <Variable initializer="true" name="requireViolationReviewComments">
+    <Description>If true, requesters will be required to enter in comments if they
+      proceed with a request that will result in policy violations. This
+      is only relevant if policyScheme=interactive.</Description>
+  </Variable>
+  <Variable input="true" name="policiesToCheck">
+    <Description>A List of policies that should be checked. If this list is
+      empty all violations will be checked. Used in combination
+      with policyScheme.</Description>
+  </Variable>
+  <Variable initializer="spadmin" input="true" name="fallbackApprover">
+    <Description>A String that specifies the name of the Identity that will
+      be assigned any approvals where the owner of the approver
+      can&amp;#39;t be resolved. Example if the scheme is &amp;quot;owner&amp;quot; and the
+      application doesn&amp;#39;t specify and owner.</Description>
+  </Variable>
+  <Variable initializer="continue" input="true" name="policyScheme">
+    <Description>A String that specifies how policy checks effect the overall
+      process.
+
+      none - disabled policy checking
+
+      continue -  continue if policy violations are found
+
+      interactive -  allow requester to remove request items which are causing violations
+
+      fail -  this option will cause the workflow to terminate immediately if any policy violations are found.
+      Note that the requester will not be notified that the workflow has terminated.</Description>
+  </Variable>
+  <Variable initializer="false" input="true" name="endOnManualWorkItems">
+    <Description>Option to skip requests with manual work items.</Description>
+  </Variable>
+  <Variable initializer="false" input="true" name="endOnProvisioningForms">
+    <Description>Option to skip requests with provisioning forms.</Description>
+  </Variable>
+  <Variable name="plan"/>
+  <Variable name="project"/>
+  <Variable name="emailArgList">
+    <Description>List of hash maps of all necessary emails that need to be sent out.</Description>
+  </Variable>
+  <Variable initializer="ALPHA_LCE_JOINER_START" name="alphaJoinerStartAuditAction">
+    <Description>This is the name for the Custom Audit</Description>
+  </Variable>
+  <Variable initializer="ALPHA_LCE_JOINER_SUCCESS" name="alphaJoinerSuccessAuditAction">
+    <Description>This is the name for the Custom Audit</Description>
+  </Variable>
+  <Variable initializer="ALPHA_LCE_JOINER_FAILURE" name="alphaJoierFailureAuditAction">
+    <Description>This is the name for the Custom Audit</Description>
+  </Variable>
+  <Variable initializer="ALPHA_LCE_JOINER_END" name="alphaJoinerEndAuditAction">
+    <Description>This is the name for the Custom Audit</Description>
+  </Variable>
+  <Variable input="true" name="alphaWorkflowFailureMap"/>
+  <Description>Process a new employee.</Description>
+  <RuleLibraries>
+    <Reference class="sailpoint.object.Rule" name="Alpha-Rule-Joiner-RuleLibrary"/>
+    <Reference class="sailpoint.object.Rule" name="Alpha-Rule-AuditEvent-Library"/>
+    <Reference class="sailpoint.object.Rule" name="Alpha-Rule-Generic-RuleLibrary"/>
+  </RuleLibraries>
+  <Step icon="Start" name="Start" posX="3" posY="12">
+    <Transition to="Auditing - Workflow Start"/>
+  </Step>
+  <Step icon="Audit" name="Auditing - Workflow Start" posX="108" posY="11" resultVariable="auditEventId">
+    <Arg name="identityName" value="ref:identityName"/>
+    <Arg name="auditEventId" value="ref:auditEventId"/>
+    <Arg name="alphaJoinerStartAuditAction" value="ref:alphaJoinerStartAuditAction"/>
+    <Description>Audit Workflow Initialization</Description>
+    <Script>
+      <Source><![CDATA[import sailpoint.object.Identity;
+        import org.apache.log4j.Logger;
+
+        Logger log = Logger.getLogger("iiq.alpha.workflow.Alpha-WorkFlow-Joiner");
+
+        log.debug("Entering Workflow step: "+wfcontext.getStep().getName());
+        Identity identity = (Identity) context.getObject(Identity.class, identityName);
+        String action = alphaJoinerStartAuditAction;
+        String targetIdentity = identity.getDisplayName();
+        return createAuditEvent(wfcontext.getWorkflow().getName(), targetIdentity, action,null,null,null,null,null,null,null,null,null,null);
+      ]]></Source>
+    </Script>
+    <Transition to="Build Plan"/>
+  </Step>
+  <Step icon="Default" name="Build Plan" posX="210" posY="10" resultVariable="plan">
+    <Description>Build the Plan for Joiner</Description>
+    <Script>
+      <Source><![CDATA[
+        import sailpoint.object.Identity;
+        import sailpoint.object.*;
+        import org.apache.log4j.Logger;
+        import java.util.*;
+
+        Logger log = Logger.getLogger("iiq.alpha.workflow.Alpha-WorkFlow-Joiner");
+        log.debug("Entering Workflow step: "+wfcontext.getStep().getName());
+
+        ProvisioningPlan plan = getDynamicJoinerPlan(context, identityName, workflow);
+        return plan;
+
+      ]]></Source>
+    </Script>
+    <Transition to="Initialize"/>
+    <Transition to="Auditing WorkFlow End" when="plan == null || plan.getAccountRequests() == null || plan.getAccountRequests().size() &lt; 1"/>
+  </Step>
+  <Step icon="Task" name="Initialize" posX="277" posY="167">
+    <Arg name="formTemplate"/>
+    <Arg name="enableRetryRequest"/>
+    <Arg name="allowRequestsWithViolations" value="ref:allowRequestsWithViolations"/>
+    <Arg name="endOnManualWorkItems" value="ref:endOnManualWorkItems"/>
+    <Arg name="policiesToCheck" value="ref:policiesToCheck"/>
+    <Arg name="workItemPriority" value="ref:workItemPriority"/>
+    <Arg name="workItemComments"/>
+    <Arg name="project"/>
+    <Arg name="identityRequestId"/>
+    <Arg name="source" value="ref:source"/>
+    <Arg name="identityDisplayName" value="ref:identityDisplayName"/>
+    <Arg name="requireViolationReviewComments"/>
+    <Arg name="identityRequest"/>
+    <Arg name="trace" value="ref:trace"/>
+    <Arg name="enableApprovalRecommendations"/>
+    <Arg name="endOnProvisioningForms" value="ref:endOnProvisioningForms"/>
+    <Arg name="plan" value="ref:plan"/>
+    <Arg name="flow" value="ref:flow"/>
+    <Arg name="identityName" value="ref:identityName"/>
+    <Arg name="approvalSet"/>
+    <Arg name="policyViolations"/>
+    <Arg name="violationReviewDecision"/>
+    <Arg name="policyScheme" value="ref:policyScheme"/>
+    <Arg name="asyncCacheRefresh"/>
+    <Arg name="optimisticProvisioning" value="ref:optimisticProvisioning"/>
+    <Arg name="launcher" value="ref:launcher"/>
+    <Description>
+      Call the standard subprocess to initialize the request, this includes
+      auditing, building the approvalset, compiling the plan into
+      a project and checking policy violations.
+    </Description>
+    <Return name="identityRequestId" to="identityRequestId"/>
+    <Return name="project" to="project"/>
+    <WorkflowRef>
+      <Reference class="sailpoint.object.Workflow" name="Identity Request Initialize"/>
+    </WorkflowRef>
+    <Transition to="Provision"/>
+  </Step>
+  <Step icon="Provision" name="Provision" posX="391" posY="167" wait="1">
+    <Arg name="formTemplate"/>
+    <Arg name="approvalScheme"/>
+    <Arg name="identityName" value="ref:identityName"/>
+    <Arg name="fallbackApprover"/>
+    <Arg name="approvalSet"/>
+    <Arg name="manualActionsEmailTemplate"/>
+    <Arg name="workItemComments"/>
+    <Arg name="workItemPriority"/>
+    <Arg name="project" value="ref:project"/>
+    <Arg name="identityRequestId" value="ref:identityRequestId"/>
+    <Arg name="splitProvisioning"/>
+    <Arg name="saveUnmanagedPlan"/>
+    <Arg name="foregroundProvisioning"/>
+    <Arg name="identityDisplayName" value="ref:identityDisplayName"/>
+    <Arg name="trace" value="ref:trace"/>
+    <Arg name="recompile"/>
+    <Arg name="optimisticProvisioning"/>
+    <Arg name="plan" value="ref:plan"/>
+    <Arg name="flow" value="ref:flow"/>
+    <Arg name="launcher" value="ref:launcher"/>
+    <Return name="project" to="project"/>
+    <WorkflowRef>
+      <Reference class="sailpoint.object.Workflow" name="Identity Request Provision"/>
+    </WorkflowRef>
+    <Transition to="Auditing WorkFlow End">
+      <Script>
+        <Source><![CDATA[
+          Logger log = Logger.getLogger("iiq.alpha.workflow.Alpha-WorkFlow-Joiner");
+          Map map = getWorkflowFailures(wfcontext);
+          log.debug("failureMap:"+map);
+          if(null!=map && map.size()>0)
+          {
+          wfcontext.setVariable("alphaWorkflowFailureMap",map);
+          return true;
+          }
+          else
+          {
+          return false;
+          }
+        ]]></Source>
+      </Script>
+    </Transition>
+    <Transition to="Auditing - Joiner Success"/>
+  </Step>
+  <Step catches="complete" icon="Catches" name="Finalize" posX="891" posY="144">
+    <Arg name="trace"/>
+    <Arg name="failureAction" value="ref:alphaJoierFailureAuditAction"/>
+    <Arg name="identityName" value="ref:identityName"/>
+    <Arg name="autoVerifyIdentityRequest"/>
+    <Arg name="approvalSet"/>
+    <Arg name="ticketManagementApplication"/>
+    <Arg name="project" value="ref:project"/>
+    <Arg name="workItemPriority"/>
+    <Arg name="identityRequestId" value="ref:identityRequestId"/>
+    <Arg name="ticketDataGenerationRule"/>
+    <Arg name="alphaWorkflowFailureMap" value="ref:alphaWorkflowFailureMap"/>
+    <WorkflowRef>
+      <Reference class="sailpoint.object.Workflow" name="Alpha-Workflow-Identity Request Finalize"/>
+    </WorkflowRef>
+    <Transition to="Stop"/>
+  </Step>
+  <Step icon="Audit" name="Auditing WorkFlow End" posX="803" posY="161" resultVariable="auditEventId">
+    <Arg name="identityName" value="ref:identityName"/>
+    <Arg name="auditEventId" value="ref:auditEventId"/>
+    <Arg name="alphaJoinerEndAuditAction" value="ref:alphaJoinerEndAuditAction"/>
+    <Description>Audit Workflow End</Description>
+    <Script>
+      <Source><![CDATA[import sailpoint.object.Identity;
+        import org.apache.log4j.Logger;
+
+        Logger log = Logger.getLogger("iiq.alpha.workflow.Alpha-WorkFlow-Joiner");
+
+        log.debug("Entering Workflow step: "+wfcontext.getStep().getName());
+        Identity identity = (Identity) context.getObject(Identity.class, identityName);
+        String action = alphaJoinerEndAuditAction;
+        String targetIdentity = identity.getDisplayName();
+        return createAuditEvent(wfcontext.getWorkflow().getName(), targetIdentity, action,null,null,null,null,null,null,null,null,null,null);
+      ]]></Source>
+    </Script>
+    <Transition to="Stop"/>
+  </Step>
+  <Step icon="Default" name="Send Joiner Emails" posX="571" posY="65">
+    <Arg name="identityDisplayName"/>
+    <Arg name="emailTemplateExists"/>
+    <Arg name="trace"/>
+    <Arg name="identityName" value="ref:identityName"/>
+    <Arg name="emailArgs"/>
+    <Arg name="emailIterator"/>
+    <Arg name="emailArgList" value="rule:Alpha-Rule-Joiner-Email Args Processor-Workflow Rule"/>
+    <WorkflowRef>
+      <Reference class="sailpoint.object.Workflow" name="Alpha-Dynamic Send Emails Sub"/>
+    </WorkflowRef>
+    <Transition to="Auditing WorkFlow End"/>
+  </Step>
+  <Step icon="Audit" name="Auditing - Joiner Success" posX="448" posY="65" resultVariable="auditEventId">
+    <Arg name="identityName" value="ref:identityName"/>
+    <Arg name="auditEventId" value="ref:auditEventId"/>
+    <Arg name="alphaJoinerSuccessAuditAction" value="ref:alphaJoinerSuccessAuditAction"/>
+    <Description>Audit Workflow Success</Description>
+    <Script>
+      <Source><![CDATA[import sailpoint.object.Identity;
+        import org.apache.log4j.Logger;
+
+        Logger log = Logger.getLogger("iiq.alpha.workflow.Alpha-WorkFlow-Joiner");
+
+        log.debug("Entering Workflow step: "+wfcontext.getStep().getName());
+        Identity identity = (Identity) context.getObject(Identity.class, identityName);
+        String action = alphaJoinerSuccessAuditAction;
+        String targetIdentity = identity.getDisplayName();
+        return createAuditEvent(wfcontext.getWorkflow().getName(), targetIdentity, action,null,null,null,null,null,null,null,null,null,null);
+      ]]></Source>
+    </Script>
+    <Transition to="Send Joiner Emails"/>
+  </Step>
+  <Step icon="Stop" name="Stop" posX="890" posY="7"/>
+</Workflow>

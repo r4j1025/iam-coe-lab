@@ -1,0 +1,96 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Alpha-Rule-Leaver-Email Args Processor-Workflow Rule" type="Workflow">
+  <Description>A rule used by a Workflow to determine a step action or variable value.
+
+Note that an Attributes map of all variables from the current WorkflowContext, merged with the arguments from the Step, is also passed into the workflow rule.</Description>
+  <Signature returnType="Object">
+    <Inputs>
+      <Argument name="log">
+        <Description>
+          The log object associated with the SailPointContext.
+        </Description>
+      </Argument>
+      <Argument name="context">
+        <Description>
+          A sailpoint.api.SailPointContext object that can be used to query the database if necessary.
+        </Description>
+      </Argument>
+      <Argument name="wfcontext">
+        <Description>
+          The current WorkflowContext.
+        </Description>
+      </Argument>
+      <Argument name="handler">
+        <Description>
+          The workflow handler associated with the current WorkflowContext.
+        </Description>
+      </Argument>
+      <Argument name="workflow">
+        <Description>
+          The current Workflow definition.
+        </Description>
+      </Argument>
+      <Argument name="step">
+        <Description>
+          The current Step.
+        </Description>
+      </Argument>
+      <Argument name="approval">
+        <Description>
+          The current Approval.
+        </Description>
+      </Argument>
+      <Argument name="item">
+        <Description>
+          The WorkItem being processed.
+        </Description>
+      </Argument>
+    </Inputs>
+    <Returns>
+      <Argument name="Object">
+        <Description>
+          The result of the workflow rule; dependent on the rule itself.
+        </Description>
+      </Argument>
+    </Returns>
+  </Signature>
+  <Source><![CDATA[
+
+          import org.apache.log4j.Logger;
+
+          import java.util.Map;
+          import java.util.HashMap;
+
+          Logger logger = Logger.getLogger("IAM_COE_BIRTHRIGHT_PROVISIONING");
+          if (logger.isTraceEnabled()) {
+          logger.trace("Alpha-Workflow-Immediate-Termination -> Entered to Send Joiner Emails Step (emailArgList Argument)!!!");
+          }
+          String CUSTOMOBJECTNAME = "Alpha-Custom-Termination Custom Object";
+          Identity identityObject = context.getObjectByName(Identity.class,identityName);
+          String emailTemplate = (String) getValueFromCustomObject(CUSTOMOBJECTNAME,"terminationSuccess_emailTemplate");
+          logger.debug("Alpha-Workflow-Immediate-Termination - Send Joiner Emails (emailArgList Argument) -> EmailTemplate : "+emailTemplate);
+
+          Map successEmailArgs = new HashMap();
+
+          String emailTo = null;
+          Identity validManager = null;  
+          validManager = getValidManagerRecursive(context,identityObject,"spadmin");
+          emailTo = validManager.getName();
+          logger.debug("Alpha-Workflow-Immediate-Termination - Send Joiner Emails (emailArgList Argument) -> EmailTemplate : "+emailTo);
+
+          successEmailArgs.put("to",emailTo);
+          successEmailArgs.put("emailTemplate",emailTemplate);
+          logger.debug("Alpha-Workflow-Immediate-Termination - Send Joiner Emails (emailArgList Argument) -> EmailArguments : "+successEmailArgs);
+
+          if (identityObject != null) {
+          logger.debug("Alpha-Workflow-Immediate-Termination - Send Joiner Emails (emailArgList Argument) -> Decaching identity object");
+          context.decache(identityObject);
+          }
+          if (logger.isTraceEnabled()) {
+          logger.trace("Alpha-Workflow-Immediate-Termination -> Send Joiner Emails Step (emailArgList Argument) Ended!!!");
+          }
+          return successEmailArgs;
+
+        ]]></Source>
+</Rule>

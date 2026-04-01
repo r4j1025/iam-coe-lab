@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Custom PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Custom name="Alpha-Custom-LCE Custom Object">
+  <Attributes>
+    <Map>
+      <entry key="LCE_Failure_NotifyGroup" value="alphaOperations@alpha.com"/>
+      <entry key="LCE_Failure_emailTemplate" value="Alpha-EmailTemplate-LCE-Failure"/>
+    </Map>
+  </Attributes>
+</Custom>

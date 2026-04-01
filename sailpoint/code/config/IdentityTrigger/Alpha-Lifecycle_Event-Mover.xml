@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE IdentityTrigger PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<IdentityTrigger attributeName="department" disabled="true" handler="sailpoint.api.WorkflowTriggerHandler" name="Alpha-Lifecycle Event-Mover" newValueFilter="" oldValueFilter="" type="AttributeChange">
+  <Description>Move AD account to appropriate OU based on department change</Description>
+  <Owner>
+    <Reference class="sailpoint.object.Identity" name="spadmin"/>
+  </Owner>
+  <HandlerParameters>
+    <Attributes>
+      <Map>
+        <entry key="workflow" value="Alpha-WorkFlow-Mover"/>
+      </Map>
+    </Attributes>
+  </HandlerParameters>
+</IdentityTrigger>

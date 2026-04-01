@@ -1,0 +1,103 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Alpha-Rule-LCE-FailureAlerting-WorkFlow Rule" type="Workflow">
+  <Description>This rule will send alert on Joiner Workflow failure.It will call getWorkflowFailures method to get the error or Warning messages from the Workflow plan.If any messages found then send mails to "joinerFailure_NotifyGroup".</Description>
+  <Signature returnType="Object">
+    <Inputs>
+      <Argument name="log">
+        <Description>
+          The log object associated with the SailPointContext.
+        </Description>
+      </Argument>
+      <Argument name="context">
+        <Description>
+          A sailpoint.api.SailPointContext object that can be used to query the database if necessary.
+        </Description>
+      </Argument>
+      <Argument name="wfcontext">
+        <Description>
+          The current WorkflowContext.
+        </Description>
+      </Argument>
+      <Argument name="handler">
+        <Description>
+          The workflow handler associated with the current WorkflowContext.
+        </Description>
+      </Argument>
+      <Argument name="workflow">
+        <Description>
+          The current Workflow definition.
+        </Description>
+      </Argument>
+      <Argument name="step">
+        <Description>
+          The current Step.
+        </Description>
+      </Argument>
+      <Argument name="approval">
+        <Description>
+          The current Approval.
+        </Description>
+      </Argument>
+      <Argument name="item">
+        <Description>
+          The WorkItem being processed.
+        </Description>
+      </Argument>
+    </Inputs>
+    <Returns>
+      <Argument name="Object">
+        <Description>
+          The result of the workflow rule; dependent on the rule itself.
+        </Description>
+      </Argument>
+    </Returns>
+  </Signature>
+  <Source><![CDATA[import sailpoint.object.Identity;
+  import sailpoint.object.Custom;
+  import sailpoint.object.Application;
+  import sailpoint.api.SailPointContext;
+  import java.util.*;
+
+  import org.apache.log4j.Logger;
+
+  Logger log = Logger.getLogger("iiq.alpha.Alpha-Rule-LCEFaulireAlerting-WorkFlow-Rule");
+  log.debug("Alpha-Rule-LCEFaulireAlerting-WorkFlow Rule - STARTS");
+
+
+  Map failureMessagesMap = wfcontext.getVariable("alphaWorkflowFailureMap");
+  log.debug("alphaWorkflowFailureMap:"+failureMessagesMap);
+
+  if(null!=failureMessagesMap && failureMessagesMap.size()>0)
+  {
+    log.debug("Error Messages found in Workflow");
+    Map argsMap = new HashMap();
+    String joinerSuccessTo = null;
+    Identity validManager = null;
+
+    Identity identity = context.getObject(Identity.class,identityName);
+    Identity validManager = getValidManagerRecursive(context,identity,"spadmin");
+
+    String emailTemplate = (String) getValueFromCustomObject("Alpha-Custom-LCE Custom Object","LCE_Failure_emailTemplate"); 
+    log.debug("emailTemplate :"+emailTemplate);
+    log.debug("wfcase:"+wfcontext.getRootWorkflowCase());
+    String taskName = wfcontext.getRootWorkflowCase().getTaskResult().getName();
+    log.debug("taskName"+taskName);
+
+    argsMap.put("taskName",taskName);
+    argsMap.put("identity",identity);
+    argsMap.put("failureMessagesMap",failureMessagesMap);
+
+    String to = getValueFromCustomObject("Alpha-Custom-LCE Custom Object","LCE_Failure_NotifyGroup"); 
+    String cc = validManager.getEmail();
+    log.debug("to:"+to);
+    log.debug("cc:"+cc);
+
+    sendEmails(emailTemplate,to,cc,argsMap);
+
+
+  }
+  else{
+    log.debug("No errors found in Joiner");
+  }]]></Source>
+</Rule>

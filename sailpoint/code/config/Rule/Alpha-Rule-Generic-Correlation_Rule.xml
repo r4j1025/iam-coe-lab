@@ -1,0 +1,116 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Alpha-Rule-Generic-Correlation Rule" type="Correlation">
+  <Description>Identity Correlation Rules are used to find identities to which new accounts can be attached.
+
+A correlation rule must return a Map with one of the specified Return arguments.</Description>
+  <Signature returnType="Map">
+    <Inputs>
+      <Argument name="log">
+        <Description>
+          The log object associated with the SailPointContext.
+        </Description>
+      </Argument>
+      <Argument name="context">
+        <Description>
+          A sailpoint.api.SailPointContext object that can be used to query the database if necessary.
+        </Description>
+      </Argument>
+      <Argument name="environment" type="Map">
+        <Description>
+          Arguments passed to the aggregation task.
+        </Description>
+      </Argument>
+      <Argument name="application">
+        <Description>
+          Application being aggregated.
+        </Description>
+      </Argument>
+      <Argument name="account">
+        <Description>
+          A sailpoint.object.ResourceObject returned from the
+          collector.
+        </Description>
+      </Argument>
+      <Argument name="link">
+        <Description>
+          Existing link to this account.
+        </Description>
+      </Argument>
+    </Inputs>
+    <Returns>
+      <Argument name="identityName">
+        <Description>
+          The name of an Identity object.
+        </Description>
+      </Argument>
+      <Argument name="identity">
+        <Description>
+          A fully resolved Identity object if the rule wants
+          to do its own queries to locate the identity.
+        </Description>
+      </Argument>
+      <Argument name="identityAttributeName">
+        <Description>
+          The name of the extended attribute that can be used
+          to locate an existing identity.
+        </Description>
+      </Argument>
+      <Argument name="identityAttributeValue">
+        <Description>
+          The value of the named extended attribute that can be used
+          to locate an existing identity. This attribute is used
+          together with the identityAttributeName argument.
+        </Description>
+      </Argument>
+    </Returns>
+  </Signature>
+  <Source><![CDATA[import org.apache.log4j.Logger;
+
+  import sailpoint.object.Application;
+  import sailpoint.object.Custom;
+  import sailpoint.object.Identity;
+  import sailpoint.api.IdentityService;
+  import sailpoint.object.QueryOptions;
+  import sailpoint.object.Filter;
+  import sailpoint.tools.Util;
+
+  Logger log = Logger.getLogger("iiq.alpha.Alpha-HRSoft-Correlation-Rule");
+  log.debug("Alpha-HRSoft-Correlation-Rule - STARTS");
+
+  Map correlationMap = new HashMap();
+  String applicationName = application.getName();
+
+  try{
+
+    Map appMap = getValueFromCustomObject("Alpha-Custom-CorreationMapping-CustomObject-test",applicationName);
+    if(null!= appMap)
+    {
+      Map typeMap = appMap.get("primaryAccount");
+      log.debug("typeMap"+typeMap);
+      if(null!= typeMap)
+      {
+        for(String key : typeMap.keySet())
+        {
+          identity = context.getUniqueObject(Identity.class,Filter.eq(typeMap.get(key),key));
+          if(identity != null)
+          {
+            correlationMap.put("identity",identity);
+            break;
+          }
+          else{
+            log.debug("Could not find Identity for "+account.getStringAttribute("sAMAccountName"));
+          }
+        }
+      }
+    }
+    else{
+      log.error("Custom Obejct not found.");
+    }
+
+  }catch(Exception e){
+    log.error("Alpha-ActiveDirectory-Correlation-Rule - cought exception:"+e);
+  }
+  log.debug("Alpha-ActiveDirectory-Correlation-Rule -END");
+  return correlationMap;]]></Source>
+</Rule>

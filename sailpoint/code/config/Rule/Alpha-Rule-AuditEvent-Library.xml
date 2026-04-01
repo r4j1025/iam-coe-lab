@@ -1,0 +1,53 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Alpha-Rule-AuditEvent-Library">
+  <Source><![CDATA[
+  import java.util.*;
+	import sailpoint.tools.*;
+	import sailpoint.object.AuditEvent;
+	import sailpoint.server.Auditor;
+  import sailpoint.object.Attributes;
+  import sailpoint.object.SailPointContext;
+	import org.apache.log4j.Logger;
+
+	 Logger log = Logger.getLogger("iiq.alpha.rule.Alpha-Rule-AuditEvent-Library"); 
+  // call this function from Rule/Workflows to create Custom Audit. "action" is mandetory. If other attributes are not present then pass null.This methid will return the Audit Event ID.
+	public String createAuditEvent(String source, String target, String action, String application, String accountName,String attributeName, String attributeValue, String actionInterface, Map attributes, String value1,String value2,String value3,String value4)
+	{
+		log.debug("Alpha-Rule-AuditEvent-Library-STARTS");
+		if(Util.isNullOrEmpty(action)){
+			log.debug("Action is null. Exiting");
+			return null;
+		}
+		if(Auditor.isEnabled(action))
+		{
+			AuditEvent auditEvent = new AuditEvent();
+			auditEvent.setSource(source);
+			auditEvent.setTarget(target);
+			auditEvent.setAction(action);
+			auditEvent.setApplication(application);
+			auditEvent.setAccountName(accountName);
+			auditEvent.setAttributeName(attributeName);
+			auditEvent.setAttributeValue(attributeValue);
+			auditEvent.setInterface(actionInterface);
+			auditEvent.setAttributes(new Attributes(attributes));
+			auditEvent.setString1(value1);
+			auditEvent.setString2(value2);
+			auditEvent.setString3(value3);
+			auditEvent.setString4(value4);
+			
+			Auditor.log(auditEvent);
+			context.commitTransaction();
+			return auditEvent.getId();
+			
+		}
+		else
+		{
+			log.debug("Audit action is not enabled/ doesnot exists");
+			return null;
+		}
+	}
+	
+
+  ]]></Source>
+</Rule>

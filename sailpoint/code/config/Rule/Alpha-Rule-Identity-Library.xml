@@ -1,0 +1,608 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Alpha-Rule-Identity-Library">
+  <Source><![CDATA[
+
+  import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+
+
+import sailpoint.api.Aggregator;
+import sailpoint.api.Identitizer;
+import sailpoint.api.SailPointContext;
+import sailpoint.connector.AbstractConnector;
+import sailpoint.connector.Connector;
+import sailpoint.connector.ConnectorFactory;
+import sailpoint.integration.Util;
+import sailpoint.object.Application;
+import sailpoint.object.Attributes;
+import sailpoint.object.Capability;
+import sailpoint.object.Certification;
+import sailpoint.object.CertificationEntity;
+import sailpoint.object.CertificationItem;
+import sailpoint.object.Filter;
+import sailpoint.object.Identity;
+import sailpoint.object.Link;
+import sailpoint.object.ManagedAttribute;
+import sailpoint.object.ObjectAttribute;
+import sailpoint.object.ObjectConfig;
+import sailpoint.object.QueryOptions;
+import sailpoint.object.ResourceObject;
+import sailpoint.object.TaskResult;
+import sailpoint.object.TaskResult.CompletionStatus;
+import sailpoint.tools.GeneralException;
+
+/**
+ * Utility class aimed at common Identity related operations. 
+ */
+public class IdentityUtil
+{
+	
+	private static final Log log = LogFactory.getLog(IdentityUtil.class);
+	
+	/**
+	 * Private constructor so now one can instaniate this class.
+	 */
+	private IdentityUtil() {}
+	
+	/**
+	 * Check if an identity is active based on their inactive flag which is
+	 * based on their status attribute
+	 * 
+	 * @param context
+	 * @param identity
+	 * @return
+	 * @throws GeneralException
+	 */
+	public static boolean isActive(SailPointContext context, String identity) throws GeneralException
+	{
+		Object flag = SearchUtil.getObjectProperty(context, Identity.class, Filter.eq("name", identity), "inactive");
+		
+		if (flag != null) return !((Boolean) flag);
+		
+		return true;
+	}
+	
+	
+	/**
+	 * Returns this identity's manager if the manager is active and is not an
+	 * executive, otherwise returns the backup identity.
+	 * 
+	 * @param identity
+	 * @return
+	 * @throws GeneralException 
+	 */
+	public static Identity getValidManager(SailPointContext context, Identity identity, String backup) throws GeneralException
+	{
+		Identity manager = (identity != null) ? identity.getManager() : null;
+		
+		if (manager != null && !manager.isInactive())
+		{
+			return manager;
+		}
+		
+		return (Identity) context.getObjectByName(Identity.class, backup);
+	}	
+	
+	/**
+	 * Recursively iterates through the manager chain looking for an Active, non-Executive Identity to return.  If it can't find one, the backup Identity is returned.
+	 * 
+	 * @param context
+	 * @param identity
+	 * @param backup		Backup identity if active, non-exec manager is not found
+	 * @return
+	 * @throws GeneralException 
+	 */
+	public static Identity getValidManagerRecursive(SailPointContext context, Identity identity, String backup) throws GeneralException
+	{
+		Identity manager = (identity != null) ? identity.getManager() : null;
+		
+		if (manager != null)
+		{
+			if(!manager.isInactive())
+			{
+				return manager;
+			}
+			else if(manager != identity)
+			{
+				return getValidManagerRecursive(context, manager, backup);//can someone be their own manager? (could result in infinite recursion) if yes, then return identity if manager = identity
+			}
+				
+		}	
+		return (Identity) context.getObjectByName(Identity.class, backup);
+		
+	}
+	
+	/**
+	 * Returns the next active manager who's not an executive, null otherwise. 
+	 * 
+	 * @param context
+	 * @param manager
+	 * @return
+	 * @throws GeneralException
+	 */
+	public static Identity getManagerRecursive(SailPointContext context, Identity manager) throws GeneralException
+	{
+		while ((manager = manager.getManager()) != null)
+		{
+			// If we find an active manager
+			if (!manager.isInactive())
+			{     
+				return manager;
+			}
+		}
+		
+		return null;
+	}	
+	
+	/**
+	 * Returns true if the specified identity is a System Administrator.
+	 * 
+	 * @param identity
+	 * @return
+	 */
+	public static boolean isSysAdmin(Identity identity)
+	{
+		return identity.getCapabilityManager().hasCapability(Capability.SYSTEM_ADMINISTRATOR);
+	}
+	
+	
+	/**
+	 * Returns true if the specified identity is in the given certification.
+	 * 
+	 * This is used during self certification.
+	 * 
+	 * @param identity
+	 * @param certification
+	 * @return
+	 */
+	public static boolean isInCertification(Identity identity, Certification certification)
+	{
+		for (CertificationEntity entity : certification.getEntities())
+		{
+			for (CertificationItem item : entity.getItems())
+			{
+				if (item.getTargetId().equals(identity.getId())) return true;
+			}
+		}
+
+		return false;
+	}
+	
+	/**
+	 * Assigns an identity as the owner of an entitlement and adds the Entitlement Owner capability. 
+	 * 
+	 * @param context
+	 * @param entitlement
+	 * @param owner
+	 * @throws GeneralException
+	 */
+	public static void assignEntitlementOwner(SailPointContext context, ManagedAttribute entitlement, Identity owner) throws GeneralException
+	{
+		entitlement.setOwner(owner);
+	}
+	
+	/**
+	 * Convenience method for reassigning an entitlement ownership. Removes the old
+	 * owner and removes their Entitlement Owner capability if they don't own any other
+	 * entitlements. Adds a new owner and assigns them the Entitlement Owner capability
+	 * if they don't already have it. 
+	 * 
+	 * @param context
+	 * @param entitlement
+	 * @param newOwner
+	 * @throws GeneralException
+	 */
+	public static void reassignEntitlementOwner(SailPointContext context, ManagedAttribute entitlement, Identity newOwner) throws GeneralException
+	{
+		Identity oldOwner = entitlement.getOwner();
+		
+		assignEntitlementOwner(context, entitlement, newOwner);
+		if (oldOwner != null)
+		{
+			int numberOfEnts = getNumberOfOwnedEntitlements(context, oldOwner);
+			if (numberOfEnts <= 1)
+			{
+				context.saveObject(oldOwner);
+			}
+		}
+	}
+
+	/**
+	 * Adds a capability to the identity if it doesn't already have it.
+	 * 
+	 * @param context
+	 * @param identity
+	 * @param capabilityName
+	 * @throws GeneralException
+	 */
+	public static void addCapability(SailPointContext context, Identity identity, String capabilityName) throws GeneralException
+	{
+		addCapability(context, identity, context.getObjectByName(Capability.class, capabilityName));
+	}
+	
+	/**
+	 * Adds a capability to the identity if it doesn't already have it.
+	 * 
+	 * @param context
+	 * @param identity
+	 * @param capability
+	 * @throws GeneralException
+	 */
+	public static void addCapability(SailPointContext context, Identity identity, Capability capability) throws GeneralException
+	{
+		if (!identity.getCapabilityManager().hasCapability(capability.getName()))
+		{
+			identity.add(capability);
+			context.saveObject(identity);
+		}
+	}
+	
+
+	/**
+	 * Returns the number of entitlements an identity owns.
+	 * 
+	 * @param context
+	 * @param identity
+	 * @return
+	 * @throws GeneralException
+	 */
+	public static int getNumberOfOwnedEntitlements(SailPointContext context, Identity identity) throws GeneralException
+	{
+		QueryOptions qo = new QueryOptions();
+		qo.addFilter(Filter.eq("owner.id", identity.getId()));
+		
+		return context.countObjects(ManagedAttribute.class, qo);
+	}
+	
+	/**
+	 * 
+	 * @param one
+	 * @param two
+	 * @return
+	 */
+	public static boolean isDifferent(Identity one, Identity two)
+	{
+		ObjectConfig config = ObjectConfig.getObjectConfig(Identity.class);
+		List<ObjectAttribute> attributes = config.getObjectAttributes(); 
+		
+		for (ObjectAttribute attribute : attributes)
+		{
+			if (!attribute.isSystem())
+			{
+				String name = attribute.getName();
+				
+				Object old = one.getAttribute(name);
+				Object nue = two.getAttribute(name);
+				
+				if(log.isTraceEnabled())
+				{
+					log.trace("Comparing attribute : " + name + " old value: " + old + " new value: " + nue + " for identity: " + one.getName());
+				}
+				
+				if (!equals(old, nue))
+				{
+					if (log.isDebugEnabled()) log.debug(String.format("%s is different (%s, %s) for %s", name, old, nue, one.getName()));
+					return true;
+				}
+			}
+		}
+		
+		return false;
+	}
+	
+	/**
+	 * 
+	 * @param one
+	 * @param two
+	 * @return
+	 */
+	@SuppressWarnings({ "unchecked" })
+	public static List<Map<String, Object>> getDifferences(Identity one, Identity two)
+	{
+		Map<String, Object> oldValues = new HashMap<String, Object>();
+		Map<String, Object> newValues = new HashMap<String, Object>();
+		
+		ObjectConfig config = ObjectConfig.getObjectConfig(Identity.class);
+		List<ObjectAttribute> attributes = config.getObjectAttributes(); 
+		
+		for (ObjectAttribute attribute : attributes)
+		{
+			if (!attribute.isSystem())
+			{
+				String name = attribute.getName();
+				
+				Object old = one.getAttribute(name);
+				Object nue = two.getAttribute(name);
+	
+				if(log.isTraceEnabled())
+				{
+					log.trace("Comparing attribute : " + name + " old value: " + old + " new value: " + nue + " for identity: " + one.getName());
+				}
+				
+				if (!equals(old, nue))
+				{
+					if (log.isDebugEnabled()) log.debug(String.format("%s is different (%s, %s) for %s", name, old, nue, one.getName()));
+					oldValues.put(name, old);
+					newValues.put(name, nue);
+				}
+			}
+		}
+		
+		return Arrays.asList(oldValues, newValues);
+	}
+	
+	/**
+	 * 
+	 * @param one
+	 * @param two
+	 * @return
+	 */
+	public static boolean equals(Object one, Object two)
+	{
+		if (one == null && two == null) return true;
+		if (one == null || two == null) return false;
+		return one.equals(two);		
+	}
+	
+	/**
+	 * 
+	 * @param context
+	 * @param identity
+	 * @throws GeneralException
+	 */
+	public static void saveIdentity(SailPointContext context, Identity identity) throws GeneralException{
+		if (context == null || identity == null) {
+			throw new GeneralException("Cannot save identity obejct, context or identity was null.");
+		}
+		context.saveObject(identity);
+		context.commitTransaction();
+	}
+	
+	
+	/**
+    *
+    * @param subordinate - the name whose manager you want
+    * @param potentialManager - the name to check against
+    * @param context
+    *
+    * @return boolean - true if potentialManager is subordinate's Manager
+    */
+	public static boolean isManager(String subordinate, String potentialManager, SailPointContext context)
+	{
+		try
+		{
+			Identity manager = SearchUtil.getIdentityManager(context
+																, Filter.eq(IdentityObjectModel.NAME, subordinate));
+			String managerName = manager.getName();
+			return managerName.equalsIgnoreCase(potentialManager);
+					
+		}catch (GeneralException e)
+		{
+			log.error(e,e);
+		}
+		return false;
+	}
+	
+	public static boolean aggregateAccount(SailPointContext context, Application application, Identity identity, String nativeIdentity) throws Exception {
+		if (log.isTraceEnabled()) log.trace("Enter aggregateAccount");
+		
+		if (context == null || application == null || identity == null || StringUtils.isEmpty(nativeIdentity)) throw new GeneralException("No null parameters are allowed.");
+		
+		String applicationName = application.getName();
+		String identityName    = identity.getName();
+				
+		if (log.isTraceEnabled()) {
+			log.trace("Performing targeted aggregation");
+			log.trace("Identity: " + identityName);
+			log.trace("Application: " + applicationName);
+		}
+		
+		if (log.isTraceEnabled()) log.trace("Getting connector");
+		Connector connector = ConnectorFactory.getConnector(application, null);
+		if (connector == null) throw new GeneralException("Unabled to obtain connector for application: " + applicationName);
+		
+		if (log.isTraceEnabled()) log.trace("Getting data from connector");
+		ResourceObject resourceObject = connector.getObject(AbstractConnector.TYPE_ACCOUNT, nativeIdentity, null);
+		
+		if (log.isTraceEnabled()) log.trace("Configuring aggregation");
+		Attributes<String, Object> argMap = new Attributes<String, Object>();
+		argMap.put(Aggregator.ARG_AGGREGATION_TYPE, Aggregator.TYPE_ACCOUNT);
+		argMap.put(Aggregator.ARG_APPLICATIONS    , applicationName);
+		argMap.put("descriptionAttribute"         , "description");
+		argMap.put("descriptionLocale"            , "en_US");
+		
+		if (log.isTraceEnabled()) log.trace("Running aggregation");
+		Aggregator aggregator = new Aggregator(context ,argMap);
+		TaskResult taskResult = aggregator.aggregate(application, resourceObject);
+		
+		if (log.isTraceEnabled()) log.trace("Completion status: " + taskResult.getCompletionStatus().name());
+		boolean isSuccess = taskResult.getCompletionStatus().equals(CompletionStatus.Success);
+		
+		if (log.isTraceEnabled()) log.trace("Exit aggregateAccount: " + isSuccess);
+		return isSuccess;
+	}
+	
+	public static boolean aggregateAccount(SailPointContext context, String applicationName, String identityName, String nativeIdentity) throws Exception {
+		if (context == null || StringUtils.isEmpty(applicationName) || StringUtils.isEmpty(identityName) || StringUtils.isEmpty(nativeIdentity)) throw new GeneralException("No null parameters are allowed.");
+		
+		Application application = SearchUtil.getApplication(context, applicationName);
+		Identity identity       = SearchUtil.getIdentity(context, identityName);
+		
+		if (application == null || identity == null) throw new GeneralException("Problem obtaining application and/or identity from context.");
+		
+		return aggregateAccount(context, application, identity, nativeIdentity);
+	}
+	
+	public static void refreshIdentity(SailPointContext context, Identity identity, Attributes<String, Object> args) throws GeneralException {
+		Identitizer identitizer = new Identitizer(context, args);
+		identitizer.refresh(identity);
+		saveIdentity(context, identity);
+	}
+	
+	public static void refreshAllLinks(SailPointContext context, Identity identity) throws GeneralException {
+		Identitizer identitizer = new Identitizer(context);
+		identitizer.reload(identity);
+		saveIdentity(context, identity);
+	}
+	
+	public static void refreshLinks(SailPointContext context, Identity identity, List<Link> links) throws GeneralException {
+		Identitizer identitizer = new Identitizer(context);
+		identitizer.reload(identity, links);
+		saveIdentity(context, identity);
+	}
+	
+	public static void refreshLinks(SailPointContext context, Identity identity, Set<String> applicationNames) throws GeneralException {
+		List<Link> links = new ArrayList<Link>(applicationNames.size());
+		for (Link link : identity.getLinks()) if (applicationNames.contains(link.getApplicationName())) links.add(link);
+		refreshLinks(context, identity, links);
+	}
+	
+	public static void refreshLinks(SailPointContext context, String identityName, List<Link> links) throws GeneralException {
+		Identity identity = SearchUtil.getIdentity(context, identityName);
+		refreshLinks(context, identity, links);
+	}
+	
+	public static void refreshLinks(SailPointContext context, String identityName, Set<String> applicationNames) throws GeneralException {
+		Identity identity = SearchUtil.getIdentity(context, identityName);
+		refreshLinks(context, identity, applicationNames);
+	}
+	
+	public static void refreshLink(SailPointContext context, Identity identity, Link link) throws GeneralException {
+		refreshLinks(context, identity, Arrays.asList(link));
+	}
+	
+	public static void refreshLink(SailPointContext context, Identity identity, String applicationName) throws GeneralException {
+		refreshLinks(context, identity, new HashSet<String>(Arrays.asList(applicationName)));
+	}
+	
+	public static void refreshLink(SailPointContext context, String identityName, Link link) throws GeneralException {
+		refreshLinks(context, identityName, Arrays.asList(link));
+	}
+	
+	public static void refreshLink(SailPointContext context, String identityName, String applicationName) throws GeneralException {
+		refreshLinks(context, identityName, new HashSet<String>(Arrays.asList(applicationName)));
+	}
+
+	public static boolean applicationWithPrefixExists(Identity identity, String applicationPrefix){
+		if(log.isTraceEnabled())
+			log.trace("Enter applicationExists");
+		
+		boolean adAppExists = false;
+		if(identity != null){
+			if(log.isTraceEnabled())
+				log.trace("Identity[" + identity.getName() + "]");
+			
+			identity.load();
+			List<Link> links = identity.getLinks();
+			if(links != null){
+		    	for(Link link : links){
+		    		String appName = link.getApplicationName();
+		    		if(appName.startsWith(applicationPrefix)){
+		    			adAppExists = true;
+		    			log.trace("Found application: " + appName);
+		    			break;
+		    		}
+		    	}
+			}
+		}
+    	
+    	if(log.isTraceEnabled())
+    		log.trace("Exit applicationExists: " + adAppExists);
+    	
+    	return adAppExists;
+	}
+	
+	public static boolean applicationExists(Identity identity, String applicationName){
+		if(log.isTraceEnabled())
+			log.trace("Enter applicationExists");
+		
+		boolean adAppExists = false;
+		if(identity != null){
+			if(log.isTraceEnabled())
+				log.trace("Identity[" + identity.getName() + "]");
+			
+			identity.load();
+			List<Link> links = identity.getLinks();
+			if(links != null){
+		    	for(Link link : links){
+		    		String appName = link.getApplicationName();
+		    		if(appName.equals(applicationName)){
+		    			adAppExists = true;
+		    			log.trace("Found application: " + appName);
+		    			break;
+		    		}
+		    	}
+			}
+		}
+    	
+    	if(log.isTraceEnabled())
+    		log.trace("Exit applicationExists: " + adAppExists);
+    	
+    	return adAppExists;
+	}
+	
+	public static boolean hasIdentityAttributeFlag(Identity identity, String attribute){
+		if(log.isTraceEnabled())
+			log.trace("Enter activeDirectoryApplicationExists");
+		
+		boolean adAcctFlagExists = false;
+		if(identity != null){
+			if(log.isTraceEnabled())
+				log.trace("Identity[" + identity.getName() + "]");
+			
+			String flag = (String) identity.getAttribute(attribute);
+			if(Util.isNotNullOrEmpty(flag)){
+				if(flag.equalsIgnoreCase(IdentityObjectModel.FLAG_Y)){
+					adAcctFlagExists = true;
+				}
+			}
+		}
+    	
+    	if(log.isTraceEnabled())
+    		log.trace("Exit activeDirectoryApplicationExists: " + adAcctFlagExists);
+    	
+    	return adAcctFlagExists;
+	}
+	
+	public static boolean identityAttributeIsNotNullOrEmpty(Identity identity, String attribute){
+		if(log.isTraceEnabled()){
+			log.trace("Enter identityAttributeIsNotNullOrEmpty");
+			log.trace("Function Parameters: " + 
+        			"identityName[" + identity.getName() + "], " +
+					"attribute[" + attribute + "]");
+		}
+		
+		boolean attrExists = false;
+		if(identity != null){
+			if(log.isTraceEnabled())
+				log.trace("Identity[" + identity.getName() + "]");
+			
+			String attr = (String) identity.getAttribute(attribute);
+			if(Util.isNotNullOrEmpty(attr)){
+				attrExists = true;
+			}
+		}
+    	
+    	if(log.isTraceEnabled())
+    		log.trace("Exit identityAttributeIsNotNullOrEmpty: " + attrExists);
+    	
+    	return attrExists;
+	}
+	
+
+}
+  
+
+  ]]></Source>
+</Rule>

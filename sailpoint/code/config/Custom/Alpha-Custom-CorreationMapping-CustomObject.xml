@@ -1,0 +1,31 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Custom PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Custom name="Alpha-Custom-CorreationMapping-CustomObject">
+  <Attributes>
+    <Map>
+      <entry key="Alpha - Active Directory">
+        <value>
+          <Map>
+            <entry key="primaryAccount">
+              <value>
+                <Map>
+                  <entry key="employeeNumber" value="employeeId"/>
+                </Map>
+              </value>
+            </entry>
+            <entry key="privilegedAccount" value="PA_ActiveDirectory"/>
+            <entry key="secondaryAccount">
+              <value>
+                <Map>
+                  <entry key="employeeNumber" value="employeeId"/>
+                </Map>
+              </value>
+            </entry>
+            <entry key="serviceAccount" value="SA_ActiveDirectory"/>
+          </Map>
+        </value>
+      </entry>
+      <entry key="HRSoft" value="SA_AppraisalSoft"/>
+    </Map>
+  </Attributes>
+</Custom>

@@ -81,7 +81,7 @@ EOF
 
 	pwd
 	envsubst < $IIQ_HOME/conf/iiq.properties.template > "$IIQ_WEBAPP/WEB-INF/classes/iiq.properties"
-
+	# envsubst < $IIQ_HOME/conf/build.properties.template > "$IIQ_WEBAPP/WEB-INF/classes/build.properties"
 	echo "✅ Config ready"
 
 	# -------------------------------
@@ -90,15 +90,15 @@ EOF
 	INIT_CHECK=$(mysql -h $DB_HOST -u$DB_USER -p$DB_PASS -D $DB_NAME -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_name='spt_identity';" | tail -n 1 || echo 0)
 
 	if [ "$INIT_CHECK" -eq 0 ]; then
-	echo "⚠️ Initializing DB schema..."
+		echo "⚠️ Initializing DB schema..."
 
-	DB_SCRIPT=$(find "$IIQ_WEBAPP/WEB-INF/database" -name "create_identityiq_tables-*.mysql" | head -n 1)
+		DB_SCRIPT=$(find "$IIQ_WEBAPP/WEB-INF/database" -name "create_identityiq_tables-*.mysql" | head -n 1)
 
-	mysql -h $DB_HOST -u$DB_ROOT_USER -p$DB_ROOT_PASSWORD $DB_NAME < "$DB_SCRIPT"
+		mysql -h $DB_HOST -u$DB_ROOT_USER -p$DB_ROOT_PASSWORD $DB_NAME < "$DB_SCRIPT"
 
-	echo "✅ Schema created"
+		echo "✅ Schema created"
 	else
-	echo "✅ Schema already exists"
+		echo "✅ Schema already exists"
 	fi
 
 	# -------------------------------
@@ -156,11 +156,6 @@ if [ "$BUILD_FROM_CODE" = "true" ]; then
   # Prefer identityiq war specifically
   BUILT_WAR=$(find . -type f -name "identityiq*.war" | sort | tail -n 1)
 
-  # Fallback (any war)
-  if [ -z "$BUILT_WAR" ]; then
-    BUILT_WAR=$(find . -type f -name "*.war" | sort | tail -n 1)
-  fi
-
   if [ -z "$BUILT_WAR" ]; then
     echo "❌ No WAR file found after build"
     exit 1
@@ -169,10 +164,25 @@ if [ "$BUILD_FROM_CODE" = "true" ]; then
   echo "✅ Found WAR: $BUILT_WAR"
 
   # Copy to standard location
-  cp "$BUILT_WAR" $IIQ_HOME/identityiq.war
+#   cp "$BUILT_WAR" "$CATALINA_HOME/webapps/identityiq.war"
 
-  echo "✅ WAR copied to $IIQ_HOME/identityiq.war"
+  echo "✅ WAR copied to $CATALINA_HOME/webapps/identityiq.war"
 
+  unzip -n "$BUILT_WAR" -d "$IIQ_WEBAPP"
+
+  echo "✅ Extracted the WAR to $IIQ_WEBAPP"
+  envsubst < $IIQ_HOME/conf/iiq.properties.template > "$IIQ_WEBAPP/WEB-INF/classes/iiq.properties"
+  
+  cd "$IIQ_WEBAPP/WEB-INF/bin"
+  chmod +x ./iiq
+  sed -i 's/\r$//' ./iiq
+# Create command file
+  cat <<EOF > /tmp/iiq_custom_import.txt
+import sp.init-custom.xml
+exit
+EOF
+  echo "Running Custom Import..."
+  bash ./iiq console < /tmp/iiq_custom_import.txt
 else
   echo "❌ No Build files Found"
 fi

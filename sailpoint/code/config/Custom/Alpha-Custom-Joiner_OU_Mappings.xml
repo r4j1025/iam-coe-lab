@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Custom PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Custom name="Alpha-Custom-Joiner OU Mappings">
+  <Attributes>
+    <Map>
+      <entry key="Department">
+        <value>
+          <Map>
+            <entry key="Accounting" value="Accounting"/>
+            <entry key="Corporate" value="Corporate"/>
+            <entry key="Finance" value="Finance"/>
+            <entry key="HR" value="HR"/>
+            <entry key="Marketing" value="Marketing"/>
+          </Map>
+        </value>
+      </entry>
+      <entry key="Location">
+        <value>
+          <Map>
+            <entry key="Dubai" value="Dubai"/>
+            <entry key="India" value="India"/>
+            <entry key="Singapore" value="Singapore"/>
+            <entry key="US" value="US"/>
+            <entry key="United" value="United Kingdom"/>
+            <entry key="United Kingdom" value="United Kingdom"/>
+          </Map>
+        </value>
+      </entry>
+      <entry key="TimeSheetBaseOu" value="ou=users,ou=trainee1,dc=iamcoe,dc=example,dc=com"/>
+      <entry key="TimeSheetObjectClasses">
+        <value>
+          <List>
+            <String>inetOrgPerson</String>
+            <String>organizationalPerson</String>
+            <String>person</String>
+            <String>timeSheetAppCustom</String>
+            <String>top</String>
+          </List>
+        </value>
+      </entry>
+      <entry key="baseOU" value="Alpha"/>
+    </Map>
+  </Attributes>
+</Custom>

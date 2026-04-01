@@ -1,0 +1,434 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Alpha-Rule-BuildPlan-RuleLibrary">
+  <Source><![CDATA[
+
+  import org.apache.log4j.Logger;
+  import sailpoint.tools.*;
+
+  import sailpoint.object.Application;
+  import sailpoint.object.Custom;
+  import sailpoint.object.Identity;
+  import sailpoint.object.Link;
+  import sailpoint.object.ProvisioningPlan;
+  import sailpoint.object.ProvisioningProject;
+  import sailpoint.object.ProvisioningPlan.AccountRequest;
+  import sailpoint.object.ProvisioningPlan.AttributeRequest;
+  import sailpoint.object.ProvisioningPlan.AccountRequest.Operation;
+  import sailpoint.object.Workflow;
+
+  import sailpoint.api.IdentityService;
+  import sailpoint.api.SailPointContext;
+  import sailpoint.api.Provisioner;
+  import sailpoint.api.Correlator;
+
+
+  import java.util.HashMap;
+
+  Logger log = Logger.getLogger("iiq.alpha.Alpha-Rule-BuildPlan-RuleLibrary");
+
+
+  public ProvisioningPlan buildProvisioningPlan(ProvisioningPlan plan,String identityName,ProvisioningPlan.AccountRequest.Operation operation,String applicationName,String accountType,Link link)
+  {
+    log.debug("inside buildProvisioningPlan - link");
+    return  buildProvisioningPlan(plan,identityName,operation,applicationName,accountType,link.getNativeIdentity());
+
+  }
+
+
+
+  public ProvisioningPlan buildProvisioningPlan(ProvisioningPlan plan,String identityName,ProvisioningPlan.AccountRequest.Operation operation,String applicationName,String accountType,String nativeId)
+  {
+    log.debug("Starting buildProvisioningPlan method-  nativeId");
+    if(plan == null)
+    {
+      plan = new ProvisioningPlan();
+    }
+    Identity identity = context.getObject(Identity.class,identityName);
+    AccountRequest accReq = new AccountRequest();
+    accReq.setApplication(applicationName);
+    accReq.setNativeIdentity(nativeId);
+    accReq.setOperation(operation);
+    plan.add(accReq);
+    plan.setIdentity(identity);
+
+    return plan;
+  }
+
+
+  public ProvisioningPlan buildProvisioningPlan(ProvisioningPlan plan,String identityName,ProvisioningPlan.AccountRequest.Operation operation,String applicationName,String accountType)
+  {
+    log.debug("Starting buildProvisioningPlan method-accountType");
+
+    if(plan == null)
+    {
+      plan = new ProvisioningPlan();
+    }
+
+    Identity identity = context.getObject(Identity.class,identityName);
+    log.debug("Identity : "+identity.getName());
+
+    IdentityService identityserv = new IdentityService(context);
+
+    Application appObj = context.getObject(Application.class,applicationName);
+    log.debug("appObj:"+appObj);
+    List appLinks = identityserv.getLinks(identity, appObj);
+    if(appLinks != null @and appLinks.size() > 0)
+    {
+      for(Link link :appLinks)
+      {
+        String link_accountType = link.getAttribute("Alpha_accountType");
+        log.debug("link_accountType:"+link_accountType);
+        if(link_accountType.equals(accountType))
+          plan = buildProvisioningPlan(plan,identityName,operation,applicationName,accountType,link);
+      }
+    }
+    return plan;
+
+  }
+
+
+
+  public ProvisioningPlan buildProvisioningPlan(ProvisioningPlan plan,String identityName,ProvisioningPlan.AccountRequest.Operation operation,String applicationName,List appAccountTypeList)
+  {
+    log.debug("Starting buildProvisioningPlan method");
+
+    if(plan == null)
+    {
+      plan = new ProvisioningPlan();
+    }
+
+    Identity identity = context.getObject(Identity.class,identityName);
+    log.debug("Identity : "+identity.getName());
+
+    IdentityService identityserv = new IdentityService(context);
+
+    Application appObj = context.getObject(Application.class,applicationName);
+    List appLinks = identityserv.getLinks(identity, appObj);
+    if(appLinks != null @and appLinks.size() > 0)
+    {
+      for(Link link :appLinks)
+      {
+        String link_accountType = link.getAttribute("Alpha_accountType");
+
+        if(appAccountTypeList != null @and appAccountTypeList.size() > 0)
+        {
+          if(appAccountTypeList.contains(link_accountType))
+          {
+            log.debug("Link accountType matches appAccountTypeList : "+link_accountType);
+            plan = buildProvisioningPlan(plan,identityName,operation,applicationName,link_accountType);
+          }
+        }
+      }
+    }
+    return plan;
+
+  }
+
+
+  public ProvisioningPlan buildProvisioningPlan(ProvisioningPlan plan,String identityName,ProvisioningPlan.AccountRequest.Operation operation,String applicationName)
+  {
+    log.debug("Starting buildProvisioningPlan method");
+
+    if(plan == null)
+    {
+      plan = new ProvisioningPlan();
+    }
+
+    Identity identity = context.getObject(Identity.class,identityName);
+    log.debug("Identity : "+identity.getName());
+
+    IdentityService identityserv = new IdentityService(context);
+    Application appObj = context.getObject(Application.class,applicationName);
+    List appLinks = identityserv.getLinks(identity, appObj);
+
+
+    if(appLinks != null @and appLinks.size() > 0)
+    {
+      for(Link link :appLinks)
+      {
+        String accountType = link.getAttribute("Alpha_accountType");
+        plan = buildProvisioningPlan(plan,identityName,operation,applicationName,accountType);
+      }
+    }
+    return plan;
+
+  }
+
+
+  public ProvisioningPlan buildProvisioningPlan(ProvisioningPlan plan,String identityName,ProvisioningPlan.AccountRequest.Operation operation,boolean IncludeAuthoritativeApp)
+  {
+
+    log.debug("Starting buildProvisioningPlan method");
+
+    if(plan == null)
+    {
+      plan = new ProvisioningPlan();
+    }
+
+    Identity identity = context.getObject(Identity.class,identityName);
+    log.debug("Identity : "+identity.getName());
+
+
+    List appLinks = identity.getLinks();
+
+    if(appLinks != null @and appLinks.size() > 0)
+    {
+      for(Link link :appLinks)
+      {
+        String applicationName = link.getApplicationName();
+
+        Application appObj = context.getObject(Application.class,applicationName);
+        boolean isAppAuthoritative = appObj.isAuthoritative();
+
+        log.debug("Application - "+applicationName + " isAppAuthoritative : "+isAppAuthoritative);
+        log.debug("IncludeAuthoritativeApp : "+IncludeAuthoritativeApp);
+
+        if(isAppAuthoritative @and !IncludeAuthoritativeApp)
+          break;
+        plan = buildProvisioningPlan(plan,identityName,operation,applicationName);
+      }
+    }
+    return plan;
+  }
+
+
+  public ProvisioningPlan buildProvisioningPlan(ProvisioningPlan plan,String identityName,ProvisioningPlan.AccountRequest.Operation operation)
+  {
+
+    log.debug("Starting buildProvisioningPlan method");
+
+    if(plan == null)
+    {
+      plan = new ProvisioningPlan();
+    }
+
+    Identity identity = context.getObject(Identity.class,identityName);
+    log.debug("Identity : "+identity.getName());
+
+
+    List appLinks = identity.getLinks();
+
+    if(appLinks != null @and appLinks.size() > 0)
+    {
+      for(Link link :appLinks)
+      {
+        String applicationName = link.getApplicationName();
+        plan = buildProvisioningPlan(plan,identityName,operation,applicationName);
+      }
+    }
+    return plan;
+  }
+
+
+
+
+  public String getNativeIdOfLinkBasedOnAccountType(String identityName,String applicationName,String accountType)
+  { 
+    Identity identity = context.getObjectByName(Identity.class, identityName);		
+    IdentityService idService = new IdentityService(context);
+
+
+    Application appObj = context.getObjectByName(Application.class,applicationName);
+
+    List appLinks = idService.getLinks(identity,appObj);
+
+    //Loop through AD links and calculate nativeID
+    if(appLinks != null @and appLinks.size() > 0)
+    {
+      for(Link link : appLinks)
+      {
+        String linkAccountType = (String) link.getAttribute("Alpha_accountType");
+        if(linkAccountType.equals(accountType))
+        {
+          log.debug("Link found matching with accountType "+link.toXml());
+
+          String nativeId = link.getNativeIdentity();
+          return nativeId;
+        }
+      }
+    }
+    return "";
+  }
+
+
+
+  public ProvisioningPlan buildProvisioningPlan_Modify(ProvisioningPlan plan,String identityName,String applicationName,String accountType,Map attributeRequestMap)
+  {
+
+    if(plan == null)
+    {
+      plan = new ProvisioningPlan();
+    }
+
+    Identity identity = context.getObjectByName(Identity.class, identityName);
+    String nativeId = getNativeIdOfLinkBasedOnAccountType(identityName,applicationName,accountType);
+    if(Util.isNullOrEmpty(nativeId))
+    {
+      log.debug("nativeId is empty. Returning the existing plan");
+      return plan;
+    }
+    AccountRequest accReq = new AccountRequest();
+    accReq.setOperation(AccountRequest.Operation.Modify);
+    accReq.setApplication(applicationName);
+    accReq.setNativeIdentity(nativeId);
+    if(attributeRequestMap !=null @and attributeRequestMap.size()>0)
+    {
+      for(String key : attributeRequestMap.keySet())
+      {
+        if(attributeRequestMap.get(key)!=null)
+          accReq.add(new AttributeRequest(key,attributeRequestMap.get(key)));
+      }
+    }
+    plan.add(accReq);
+    plan.setIdentity(identity);
+
+    return plan;
+  }
+
+
+  public ProvisioningPlan buildProvisioningPlan_Modify(ProvisioningPlan plan,String identityName,String applicationName,String nativeId,List attributeRequestArrayList)
+  {
+    if(plan == null)
+    {
+      plan = new ProvisioningPlan();
+    }
+
+
+    Application appObj = context.getObjectByName(Application.class, applicationName);
+    Link link = new Link();
+    Correlator correlator =new Correlator(context);
+    link = correlator.findLinkByNativeIdentity(appObj,null,nativeId);
+
+    if(null != link)
+    {
+
+      AccountRequest accReq = new AccountRequest();
+      accReq.setOperation(AccountRequest.Operation.Modify);
+      accReq.setApplication(applicationName);
+      accReq.setNativeIdentity(nativeId);
+      if(attributeRequestArrayList !=null @and attributeRequestArrayList.size()>0)
+      {
+        for(AttributeRequest attrReq : attributeRequestArrayList)
+        {
+          accReq.add(attrReq);
+        }
+      }
+      plan.add(accReq);
+      plan.setIdentity(identity);
+    }
+
+    return plan;
+  }
+
+
+
+  public ProvisioningPlan buildProvisioningPlan_Modify(ProvisioningPlan plan,String identityName,String applicationName,List attributeRequestArrayList,String accountType)
+  {
+
+    if(plan == null)
+    {
+      plan = new ProvisioningPlan();
+    }
+    Identity identity = context.getObjectByName(Identity.class, identityName);
+    String nativeId = getNativeIdOfLinkBasedOnAccountType(identityName,applicationName,accountType);
+    if(Util.isNullOrEmpty(nativeId))
+    {
+      log.debug("nativeId is empty. Returning the existing plan");
+      return plan;
+    }
+    plan = buildProvisioningPlan_Modify(plan,identityName,applicationName,nativeId,attributeRequestArrayList);
+
+    return plan;
+  }
+
+
+  public ProvisioningPlan buildProvisioningPlan_Modify(ProvisioningPlan plan,Link link,List attributeRequestArrayList)
+  {
+
+    plan = buildProvisioningPlan_Modify(plan,link.getIdentity().getName(),link.getApplicationName(),link.getNativeIdentity(),attributeRequestArrayList);
+
+    return plan;
+  }
+
+
+  public ProvisioningPlan buildProvisioningPlan_Create(ProvisioningPlan plan,String identityName,String applicationName)
+  {
+    if(plan == null)
+    {
+      plan = new ProvisioningPlan();
+    }
+
+    Identity identity = context.getObjectByName(Identity.class, identityName);
+
+    AccountRequest accReq = new AccountRequest();
+    accReq.setOperation(AccountRequest.Operation.Create);
+    accReq.setApplication(applicationName);
+    plan.add(accReq);
+    plan.setIdentity(identity);
+
+    return plan;
+  }
+
+
+  /*
+
+  ProvisioningPlan plan = new ProvisioningPlan();
+  String identityName = "Saurav";
+  //String identityName = "SA_ActiveDirectory";
+  String applicationName = "Alpha - Active Directory";
+  String operation ="Enable";
+  String accountType = "primaryAccount";
+  String nativeId = "CN=Saurav.Ganguly,OU=HR,OU=Dubai,OU=Permanent Employees,OU=Users,OU=Alpha,DC=tcs,DC=sailpointiamcoe,DC=com";
+
+  boolean IncludeAuthoritativeApp = false;
+
+  List appAccountTypeList = new ArrayList();
+  appAccountTypeList.add("primaryAccount");
+  appAccountTypeList.add("serviceAccount");
+
+  Identity identity = context.getObject(Identity.class,identityName);
+
+  Application appObj = context.getObject(Application.class,applicationName);
+
+  Link link = identity.getLink(appObj,nativeId);
+
+  Map attributeRequestMap = new HashMap();
+  attributeRequestMap.put("givenName","Saurav_test");
+  attributeRequestMap.put("sn","Ganguly_test");
+
+  AttributeRequest attrReq1 = new AttributeRequest("givenName", ProvisioningPlan.Operation.Set,"Saurav_test");
+  AttributeRequest attrReq2 = new AttributeRequest("sn", ProvisioningPlan.Operation.Add,"Ganguly_test");
+  List attributeRequestArrayList = new ArrayList();
+  attributeRequestArrayList.add(attrReq1);
+  attributeRequestArrayList.add(attrReq2);
+
+
+  //plan = buildProvisioningPlan(plan,identityName,operation);
+  //plan = buildProvisioningPlan(plan,identityName,operation,applicationName);
+  //plan = buildProvisioningPlan(plan,identityName,operation,applicationName,accountType);
+  //plan = buildProvisioningPlan(plan,identityName,operation,applicationName,accountType,nativeId);
+  //plan = buildProvisioningPlan(plan,identityName,operation,applicationName,accountType,link);
+  //plan = buildProvisioningPlan(plan,identityName,ProvisioningPlan.AccountRequest.Operation.Enable,IncludeAuthoritativeApp);
+  //plan = buildProvisioningPlan(plan,identityName,ProvisioningPlan.AccountRequest.Operation.Enable,applicationName,appAccountTypeList);
+
+  //plan = buildProvisioningPlan_Modify(plan,identityName,applicationName,accountType,attributeRequestMap);
+  //plan = buildProvisioningPlan_Modify(plan,identityName,applicationName,nativeId,attributeRequestArrayList);
+  //plan = buildProvisioningPlan_Modify(plan,identityName,applicationName,attributeRequestArrayList,accountType);
+  //plan = buildProvisioningPlan_Modify(plan,link,attributeRequestArrayList);
+
+
+  plan = buildProvisioningPlan_Create(plan,identityName,applicationName);
+  //return plan;
+
+
+  Provisioner p = new Provisioner(context);
+  ProvisioningProject proj = p.compile(plan);
+  //p.execute(proj);
+  return proj;
+*/
+
+
+
+  ]]></Source>
+</Rule>

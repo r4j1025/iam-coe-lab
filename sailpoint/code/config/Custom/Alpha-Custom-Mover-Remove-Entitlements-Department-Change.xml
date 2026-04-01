@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Custom PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Custom name="Alpha-Custom-Mover-Remove-Entitlements-Department-Change">
+  <Attributes>
+    <Map>
+      <entry key="Department">
+        <value>
+          <Map>
+            <entry key="Accounting">
+              <value>
+                <Map>
+                  <entry key="Accounting - group1" value="Alpha - Active Directory"/>
+                </Map>
+              </value>
+            </entry>
+            <entry key="Corporate">
+              <value>
+                <Map>
+                  <entry key="Corporate - group1" value="Alpha - Active Directory"/>
+                </Map>
+              </value>
+            </entry>
+            <entry key="Finance">
+              <value>
+                <Map>
+                  <entry key="Finance - group1" value="Alpha - Active Directory"/>
+                </Map>
+              </value>
+            </entry>
+            <entry key="HR">
+              <value>
+                <Map>
+                  <entry key="HR - group1" value="Alpha - Active Directory"/>
+                </Map>
+              </value>
+            </entry>
+            <entry key="Marketing">
+              <value>
+                <Map>
+                  <entry key="Marketing - group1" value="Alpha - Active Directory"/>
+                </Map>
+              </value>
+            </entry>
+          </Map>
+        </value>
+      </entry>
+    </Map>
+  </Attributes>
+</Custom>

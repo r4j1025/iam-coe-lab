@@ -1,0 +1,250 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Application PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Application connector="sailpoint.connector.JDBCConnector" featuresString="DISCOVER_SCHEMA, PROVISIONING, SYNC_PROVISIONING, DIRECT_PERMISSIONS, SEARCH, ENABLE, UNLOCK" icon="databaseIcon" name="AppraisalSoft_JDBC" profileClass="" type="JDBC">
+  <AccountCorrelationConfig>
+    <Reference class="sailpoint.object.CorrelationConfig" name="Alpha-AppraisalSoftJDBC-Correlation"/>
+  </AccountCorrelationConfig>
+  <Attributes>
+    <Map>
+      <entry key="Alpha-ApplicationExtended-Attribute-Delete-Account">
+        <value>
+          <Boolean/>
+        </value>
+      </entry>
+      <entry key="SQL" value="select E.*,UR.roleID from ap_useraccount E, ap_user_roles UR, ap_role R where E.employeeID=UR.employeeID and R.roleID=UR.roleID order by E.employeeID asc;"/>
+      <entry key="acctAggregationEnd">
+        <value>
+          <Date>1624287515868</Date>
+        </value>
+      </entry>
+      <entry key="acctAggregationStart">
+        <value>
+          <Date>1624287515173</Date>
+        </value>
+      </entry>
+      <entry key="afterProvisioningRule" value="Alpha-Rule-AppraisalSoft-AfterProvisioning"/>
+      <entry key="aggregationMode">
+        <value>
+          <Boolean/>
+        </value>
+      </entry>
+      <entry key="beforeProvisioningRule" value="Alpha-Rule-AppraisalSoft-BeforeProvisioning"/>
+      <entry key="birthrightApplication">
+        <value>
+          <Boolean>true</Boolean>
+        </value>
+      </entry>
+      <entry key="compositeDefinition"/>
+      <entry key="deltaTable"/>
+      <entry key="driverClass" value="com.mysql.jdbc.Driver"/>
+      <entry key="getDeltaSQL"/>
+      <entry key="getObjectSQL" value="select E.*,UR.roleID from ap_useraccount E, ap_user_roles UR, ap_role R where E.employeeID=UR.employeeID and R.roleID=UR.roleID and E.employeeID='$(identity)';"/>
+      <entry key="group.SQL" value="select * from ap_role;"/>
+      <entry key="group.aggregationMode">
+        <value>
+          <Boolean/>
+        </value>
+      </entry>
+      <entry key="group.deltaTable"/>
+      <entry key="group.driverClass" value="com.mysql.jdbc.Driver"/>
+      <entry key="group.getDeltaSQL"/>
+      <entry key="group.isPermissionEnabled">
+        <value>
+          <Boolean/>
+        </value>
+      </entry>
+      <entry key="group.mergeRows">
+        <value>
+          <Boolean/>
+        </value>
+      </entry>
+      <entry key="group.password" value="1:ACP:RR6LIKz42XfL2itZx64/B9VkDY1Dr74KffJWb3EFyXw="/>
+      <entry key="group.url" value="jdbc:mysql://localhost:3306/tp_appraisal"/>
+      <entry key="group.useExecuteQuery">
+        <value>
+          <Boolean/>
+        </value>
+      </entry>
+      <entry key="group.useStoredProcedureDelta">
+        <value>
+          <Boolean/>
+        </value>
+      </entry>
+      <entry key="group.useStoredProcedureDirectPermission">
+        <value>
+          <Boolean/>
+        </value>
+      </entry>
+      <entry key="group.useStoredProcedureGetObject">
+        <value>
+          <Boolean/>
+        </value>
+      </entry>
+      <entry key="group.useStoredProcedureSqlStmt">
+        <value>
+          <Boolean/>
+        </value>
+      </entry>
+      <entry key="group.user" value="root"/>
+      <entry key="indexColumns">
+        <value>
+          <List>
+            <String>employeeID</String>
+          </List>
+        </value>
+      </entry>
+      <entry key="isPermissionEnabled">
+        <value>
+          <Boolean/>
+        </value>
+      </entry>
+      <entry key="jdbcProvisionRule" value="Alpha-Rule-JDBCProvision-AppraisalSoft-GlobalProvisioning"/>
+      <entry key="mergeColumns">
+        <value>
+          <List>
+            <String>roleID</String>
+          </List>
+        </value>
+      </entry>
+      <entry key="mergeRows">
+        <value>
+          <Boolean>true</Boolean>
+        </value>
+      </entry>
+      <entry key="nativeChangeDetectionAttributeScope" value="entitlements"/>
+      <entry key="nativeChangeDetectionAttributes"/>
+      <entry key="nativeChangeDetectionEnabled">
+        <value>
+          <Boolean/>
+        </value>
+      </entry>
+      <entry key="nativeChangeDetectionOperations"/>
+      <entry key="partitionMode">
+        <value>
+          <Boolean/>
+        </value>
+      </entry>
+      <entry key="partitionStatements"/>
+      <entry key="password" value="1:ACP:jZqYMzwjoYAKSR6IpL554m/6UPF7sFFTnxB+WcPe8ts="/>
+      <entry key="provisionRule" value="globalRule"/>
+      <entry key="sysDescriptions">
+        <value>
+          <Map>
+            <entry key="en_US"/>
+          </Map>
+        </value>
+      </entry>
+      <entry key="templateApplication" value="JDBC Template"/>
+      <entry key="testConnSQL"/>
+      <entry key="url" value="jdbc:mysql://localhost:3306/tp_appraisal"/>
+      <entry key="useExecuteQuery">
+        <value>
+          <Boolean/>
+        </value>
+      </entry>
+      <entry key="useStoredProcedureDelta">
+        <value>
+          <Boolean/>
+        </value>
+      </entry>
+      <entry key="useStoredProcedureDirectPermission">
+        <value>
+          <Boolean/>
+        </value>
+      </entry>
+      <entry key="useStoredProcedureGetObject">
+        <value>
+          <Boolean/>
+        </value>
+      </entry>
+      <entry key="useStoredProcedurePartition">
+        <value>
+          <Boolean/>
+        </value>
+      </entry>
+      <entry key="useStoredProcedureSqlStmt">
+        <value>
+          <Boolean/>
+        </value>
+      </entry>
+      <entry key="useStoredProcedureTestConn">
+        <value>
+          <Boolean/>
+        </value>
+      </entry>
+      <entry key="user" value="root"/>
+    </Map>
+  </Attributes>
+  <Owner>
+    <Reference class="sailpoint.object.Identity" name="spadmin"/>
+  </Owner>
+  <ProvisioningForms>
+    <Form name="Alpha-ProvisioningPolicy-AppraisalSoft-CreateAccount" objectType="account" type="Create">
+      <Attributes>
+        <Map>
+          <entry key="pageTitle" value="Alpha-ProvisioningPolicy-AppraisalSoft-CreateAccount"/>
+        </Map>
+      </Attributes>
+      <Description>Alpha-ProvisioningPolicy-AppraisalSoft-CreateAccount</Description>
+      <Section label="User Account Details" name="User Account Details">
+        <Field displayName="Employee ID" name="employeeID" type="string">
+          <Script>
+            <Source><![CDATA[return identity.getName();]]></Source>
+          </Script>
+        </Field>
+        <Field displayName="First Name" name="firstName" type="string">
+          <Script>
+            <Source><![CDATA[return identity.getFirstname();]]></Source>
+          </Script>
+        </Field>
+        <Field displayName="Department" name="department" type="string">
+          <Script>
+            <Source><![CDATA[return identity.getAttribute("department");]]></Source>
+          </Script>
+        </Field>
+        <Field displayName="Location" name="location" type="string">
+          <Script>
+            <Source><![CDATA[return identity.getAttribute("city");]]></Source>
+          </Script>
+        </Field>
+        <Field displayName="User Status" name="userStatus" type="string">
+          <Script>
+            <Source><![CDATA[return identity.getAttribute("Status");
+            ]]></Source>
+          </Script>
+        </Field>
+      </Section>
+    </Form>
+  </ProvisioningForms>
+  <Schemas>
+    <Schema displayAttribute="employeeID" identityAttribute="employeeID" instanceAttribute="" nativeObjectType="account" objectType="account" permissionsRemediationModificationType="None">
+      <AttributeDefinition name="employeeID" type="string">
+        <Description/>
+      </AttributeDefinition>
+      <AttributeDefinition name="firstName" type="string">
+        <Description/>
+      </AttributeDefinition>
+      <AttributeDefinition name="department" type="string">
+        <Description/>
+      </AttributeDefinition>
+      <AttributeDefinition name="location" type="string">
+        <Description/>
+      </AttributeDefinition>
+      <AttributeDefinition name="userStatus" type="string">
+        <Description/>
+      </AttributeDefinition>
+      <AttributeDefinition entitlement="true" managed="true" multi="true" name="roleID" schemaObjectType="group" type="string">
+        <Description/>
+      </AttributeDefinition>
+    </Schema>
+    <Schema descriptionAttribute="description" displayAttribute="roleID" identityAttribute="roleID" instanceAttribute="" nativeObjectType="group" objectType="group" permissionsRemediationModificationType="None">
+      <AttributeDefinition name="roleID" type="string">
+        <Description/>
+      </AttributeDefinition>
+      <AttributeDefinition name="description" type="string">
+        <Description/>
+      </AttributeDefinition>
+    </Schema>
+  </Schemas>
+  <ApplicationScorecard/>
+</Application>

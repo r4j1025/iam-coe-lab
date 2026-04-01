@@ -1,0 +1,171 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Alpha-Rule-Termination-RuleLibrary">
+  <ReferencedRules>
+    <Reference class="sailpoint.object.Rule" name="Alpha-Rule-Generic-RuleLibrary"/>
+  </ReferencedRules>
+  <Source><![CDATA[
+
+  import java.util.List;
+  import java.util.ArrayList;
+
+  import javax.naming.InvalidNameException;
+  import javax.naming.ldap.LdapName;
+  import javax.naming.ldap.Rdn;
+
+  import org.apache.log4j.Logger;
+
+  import sailpoint.object.Application;
+  import sailpoint.object.Custom;
+  import sailpoint.object.Identity;
+  import sailpoint.api.IdentityService;
+  import sailpoint.object.QueryOptions;
+  import sailpoint.object.Filter;
+  import sailpoint.object.PasswordPolicy;
+  import sailpoint.api.PasswordGenerator;
+  import sailpoint.object.ProvisioningPlan;
+  import sailpoint.object.ProvisioningPlan.AccountRequest;
+  import sailpoint.tools.GeneralException;
+  import sailpoint.tools.Util;
+
+  public static Logger logger = Logger.getLogger("iiq.alpha.Alpha-Rule-Termination-RuleLibrary");
+  public static String CUSTOM_OBJECT_NAME_FOR_TERMINATION = "Alpha-Custom-Termination Custom Object";
+
+  /*
+		*Loop through all the application having 'deleteAccount' tag. If it is tagged, add Delete AccountRequest to Plan else add Disable AccountRequest to plan.
+		*/
+  /*
+  public static ProvisioningPlan getDynamicTerminationPlan (SailPointContext context, String identityName, Workflow workflow) throws GeneralException {
+
+    if (logger.isTraceEnabled()) {
+      logger.trace("Alpha-Rule-Termination-RuleLibrary -> Entered to getDynamicTerminationPlan Method!!!");
+    }
+
+    ProvisioningPlan plan = null;
+    try {
+      Identity identity = context.getObjectByName(Identity.class, identityName);		
+      IdentityService identityService = new IdentityService(context);
+
+      QueryOptions queryOptions1 = new QueryOptions();
+      qo.addFilter(Filter.notnull("birthrightApplication"));
+      List<Application> birthRightApps = context.getObjects(Application.class,qo);
+      logger.debug("Alpha-Rule-Termination-RuleLibrary - getDynamicTerminationPlan -> BirthRight Applications : "+birthRightApps);
+
+      QueryOptions queryOptions1 = new QueryOptions();
+      qo.addFilter(Filter.notnull("Alpha-ApplicationExtended-Attribute-Delete-Account"));
+      List<Application> deleteAccountsApps = context.getObjects(Application.class,qo);
+      logger.debug("Alpha-Rule-Termination-RuleLibrary - getDynamicTerminationPlan -> DeleteAccount Applications : "+deleteAccountsApps);
+
+      List<AccountRequest> accReqList = new ArrayList<AccountRequest>();
+      if (birthRightApps != null && birthRightApps.size > 0) {
+        for (Application appObject : birthRightApps) {
+          if ((deleteAccountsApps != null && deleteAccountsApps.size() > 0) && deleteAccountsApps.contains(appObject)) {
+            List<Link> linkList = identityService.getLinks(identity,appObject);
+            if (linkList != null && linkList.size() > 0) {
+              for (Link link : linkList) {
+                AccountRequest accReq = new AccountRequest();
+                accReq.setNativeIdentity(link.getNativeIdentity());
+                accReq.setApplication(link.getApplicationName());
+                accReq.setOperation(AccountRequest.Operation.Delete);
+                accReqList.add(accReq);
+              }
+            }
+          }
+          else {
+            List<Link> linkList = identityService.getLinks(identity,appObject);
+            if (linkList != null && linkList.size() > 0) {
+              for (Link link : linkList) {
+                AccountRequest accReq = new AccountRequest();
+                accReq.setNativeIdentity(link.getNativeIdentity());
+                accReq.setApplication(link.getApplicationName());
+                accReq.setOperation(AccountRequest.Operation.Disable);
+                accReqList.add(accReq);
+              }
+            }
+          }
+        }
+      }
+      if (accReqList != null && accReqList.size() > 0) {
+        plan = new ProvisioningPlan();
+        plan.setAccountRequests(accReqList);
+        plan.setIdentity(identity);
+        logger.debug("Alpha-Rule-Termination-RuleLibrary - getDynamicTerminationPlan -> ProvisioningPlan : "+plan.toXml());
+      }
+      if (identity != null) {
+        logger.debug("Alpha-Rule-Termination-RuleLibrary - getDynamicTerminationPlan -> Decaching the Identity Object");
+        context.decache(identity);
+      }
+    }
+    catch (GeneralException exp) {
+      logger.error("Alpha-Rule-Termination-RuleLibrary - getDynamicTerminationPlan -> Caught GeneralException : "+exp.getMessage());
+    }
+    catch (Exception exp) {
+      logger.error("Alpha-Rule-Termination-RuleLibrary - getDynamicTerminationPlan -> Caught JAVA Exception : "+exp.getMessage());
+    }
+    if (logger.isTraceEnabled()) {
+      logger.trace("Alpha-Rule-Termination-RuleLibrary -> getDynamicTerminationPlan method Ended!!!");
+    }
+    return plan;
+  }
+
+  public static String getDisabledUsersDN (String userDN) throws GeneralException {
+
+    if (logger.isTraceEnabled()) {
+      logger.trace("Alpha-Rule-Termination-RuleLibrary -> Entered to getDisabledUsersDN Method!!!");
+    }
+    String disabledUsersDN = null;
+    try {
+      logger.debug("Alpha-Rule-Termination-RuleLibrary - getDisabledUsersDN -> User Distinguished Name : "+userDN);
+      String cnValueOfUserDN = null;
+      if (Util.isNotNullOrEmpty(userDN)) {
+        LdapName ldapName = new LdapName(userDN);
+        if (ldapName != null) {
+          List<Rdn> rdnList = ldapName.getRdns();
+          for (Rdn rdn : rdnList) {
+            logger.debug("Alpha-Rule-Termination-RuleLibrary - getDisabledUsersDN -> RDN Type : "+rdn.getType());
+            if (rdn.getType().equalsIgnoreCase("cn")) {
+              cnValueOfUserDN = rdn.getValue();
+            }
+          }
+        }
+        logger.debug("Alpha-Rule-Termination-RuleLibrary - getDisabledUsersDN -> User CommonName from DN : "+cnValueOfUserDN);
+
+        String adDomain = getValueFromCustomObject (CUSTOM_OBJECT_NAME_FOR_TERMINATION, "AD_Domain");
+        String adBaseOU = getValueFromCustomObject (CUSTOM_OBJECT_NAME_FOR_TERMINATION, "AD_BaseOU");
+        String adDisabledOU = getValueFromCustomObject (CUSTOM_OBJECT_NAME_FOR_TERMINATION, "AD_DisabledOU");
+        if (Util.isNotNullOrEmpty(adDomain) && Util.isNotNullOrEmpty(adBaseOU) && Util.isNotNullOrEmpty(adDisabledOU) && Util.isNotNullOrEmpty(cnValueOfUserDN)) {
+          disabledUsersDN = "CN=" +cnValueOfUserDN+ "," +adDisabledOU+ "," +adBaseOU+ "," +adDomain;
+        }
+        logger.debug("Alpha-Rule-Termination-RuleLibrary - getDisabledUsersDN -> Modified (Disabled) User DN : "+disabledUsersDN);
+      }
+    }
+    catch (GeneralException exp) {
+      logger.error("Alpha-Rule-Termination-RuleLibrary - getDisabledUsersDN -> Caught GeneralException : "+exp.getMessage());
+    }
+    catch (Exception exp) {
+      logger.error("Alpha-Rule-Termination-RuleLibrary - getDisabledUsersDN -> Caught JAVA Exception : "+exp.getMessage());
+    }
+    if (logger.isTraceEnabled()) {
+      logger.trace("Alpha-Rule-Termination-RuleLibrary -> getDisabledUsersDN method Ended!!!");
+    }
+    return disabledUsersDN;
+  }*/
+
+  public static String generateADPassword (String pwdPolicyName) throws GeneralException {
+
+    if (logger.isTraceEnabled()) {
+      logger.trace("Alpha-Rule-Termination-RuleLibrary -> Entered to generateADPassword Method!!!");
+    }
+    String password = null;
+    if (Util.isNotNullOrEmpty(pwdPolicyName)) {
+      PasswordPolicy policy = context.getObjectByName(PasswordPolicy.class, pwdPolicyName);
+      password = new PasswordGenerator(context).generatePassword(policy);
+    }
+    if (logger.isTraceEnabled()) {
+      logger.trace("Alpha-Rule-Termination-RuleLibrary -> generateADPassword method Ended!!!");
+    }
+    return password;
+  }
+
+  ]]></Source>
+</Rule>

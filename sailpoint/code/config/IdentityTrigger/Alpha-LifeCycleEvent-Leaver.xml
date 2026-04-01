@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE IdentityTrigger PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<IdentityTrigger attributeName="Status" handler="sailpoint.api.WorkflowTriggerHandler" name="Alpha-LifeCycleEvent-Leaver" newValueFilter="InActive" oldValueFilter="Active" type="AttributeChange">
+  <Owner>
+    <Reference class="sailpoint.object.Identity" name="spadmin"/>
+  </Owner>
+  <HandlerParameters>
+    <Attributes>
+      <Map>
+        <entry key="workflow" value="Alpha-WorkFlow-Termination"/>
+      </Map>
+    </Attributes>
+  </HandlerParameters>
+</IdentityTrigger>

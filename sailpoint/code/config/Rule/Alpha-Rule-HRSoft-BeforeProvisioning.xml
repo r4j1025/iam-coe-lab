@@ -1,0 +1,71 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Alpha-Rule-HRSoft-BeforeProvisioning" type="BeforeProvisioning">
+  <Description>An IdentityIQ server-side rule that is executed before the connector's provisioning method is called. This gives the customer the ability to customize or react to anything in the ProvisioningPlan BEFORE it is sent to the underlying connectors used in provisioning. This rule will be called for any application found in a plan that also has a configured 'beforeProvisioningRule' configured. The plan can be updated directly in the rule by reference and does not need to return the plan.</Description>
+  <Signature>
+    <Inputs>
+      <Argument name="log">
+        <Description>
+          The log object associated with the SailPointContext.
+        </Description>
+      </Argument>
+      <Argument name="context">
+        <Description>
+          A sailpoint.api.SailPointContext object that can be used to query the database if necessary.
+        </Description>
+      </Argument>
+      <Argument name="plan">
+        <Description>
+          The ProvisioningPlan object on its way to the Connector.
+        </Description>
+      </Argument>
+      <Argument name="application">
+        <Description>
+          The application object that references this before/after script.
+        </Description>
+      </Argument>
+    </Inputs>
+  </Signature>
+  <Source><![CDATA[
+
+  import java.util.Map;
+  import java.util.HashMap;
+
+  import org.apache.log4j.Logger;
+
+  import sailpoint.object.Filter;
+  import sailpoint.object.Identity;
+  import sailpoint.object.ProvisioningPlan;
+  import sailpoint.object.ProvisioningPlan.AccountRequest;
+
+  Logger logger = Logger.getLogger("iiq.alpha.Alpha-Rule-HRSoft-BeforeProvisioning");
+  if (logger.isTraceEnabled()) {
+    logger.trace("Entered to Alpha-Rule-HRSoft-BeforeProvisioning!!");
+  }
+  Identity identityObject = null;
+  logger.debug("Plan : "+plan.toXml());
+  if (plan != null) {
+    List<AccountRequest> accReqList = plan.getAccountRequests(application.getName());
+    AccountRequest accReq = accReqList.get(0);
+    String nativeIdentity = accReq.getNativeIdentity();
+    logger.debug("NativeIdentity from AccountRequest : "+nativeIdentity);
+    identityObject = context.getUniqueObject(Identity.class, Filter.eq("employeeId",nativeIdentity));
+    logger.debug("Identity Object : "+identityObject);
+
+    if (identityObject != null) {
+      logger.debug("Identity name : "+identityObject.getName());
+      Map contextAttributeMap = new HashMap();
+      contextAttributeMap.put("#plan.firstName#",identityObject.getFirstname());
+      context.setProperty("contextAttributeMap",contextAttributeMap);
+    }
+  }
+  if (identityObject != null) {
+    logger.debug("Decaching the Identity Object");
+    context.decache(identityObject);
+  }
+  if (logger.isTraceEnabled()) {
+    logger.trace("Alpha-Rule-HRSoft-BeforeProvisioning Rule is Ended!!");
+  }
+
+  ]]></Source>
+</Rule>

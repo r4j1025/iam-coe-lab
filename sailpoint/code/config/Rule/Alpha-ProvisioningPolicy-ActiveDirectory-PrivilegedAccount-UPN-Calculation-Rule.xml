@@ -1,0 +1,67 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule language="beanshell" name="Alpha-ProvisioningPolicy-ActiveDirectory-PrivilegedAccount-UPN-Calculation-Rule" type="FieldValue">
+  <Description>This rule can be used to generate a field value (eg - an account name) using data from the given Identity. If this rule is run in the context of a workflow step then the arguments passed into the step will also be available. Also, any field values that have been processed so far from the policy related to the Application/Role will be available.</Description>
+  <ReferencedRules>
+    <Reference class="sailpoint.object.Rule" name="Alpha-Rule-Joiner-RuleLibrary"/>
+  </ReferencedRules>
+  <Signature returnType="String"/>
+  <Source><![CDATA[
+  import sailpoint.object.*;
+
+  import org.apache.log4j.Logger;
+
+  Logger log = Logger.getLogger("iiq.alpha.Alpha-ProvisioningPolicy-ActiveDirectory-PrivilegedAccount-UPN-Calculation-Rule");
+  log.debug("Alpha-ProvisioningPolicy-ActiveDirectory-PrivilegedAccount-UPN-Calculation-Rule");
+
+
+  String firstName = "";
+  String lastName = "";
+  String fullName = "";
+  //Remove all the charectors except a-z and A-Z in First Name and Last Name
+  if(null != identity.getLastname())
+  {
+    lastName = identity.getLastname();
+    lastName = lastName.replaceAll("[^a-zA-Z]","");
+  }
+  log.debug("lastName :"+lastName);
+  if(null != identity.getFirstname())
+  {
+    firstName = identity.getFirstname();
+    firstName = firstName.replaceAll("[^a-zA-Z]","");
+    firstName = "pa_"+firstName;
+    fullName = firstName.concat(lastName);
+  }
+  log.debug("fullName : "+fullName);
+
+  /* 
+	*sAMAccountName must be less than 20 chars. ->>check the length of fullName, if the length is more than 19, remove the extraCharCount form the *lastName.
+  If lastName is not as long as extraCharCount,remove the extraCharCount from firstName.
+	*/ 
+  int fullNameLength=fullName.length();
+  log.debug("fullNameLength : "+fullNameLength);
+  if (fullNameLength > 19 )
+  {
+    int extraCharCount=fullNameLength-19;
+    log.debug("extraCharCount"+extraCharCount);
+    int lastNameLength=lastName.length();
+    int firstNameLength=firstName.length();
+    log.debug("lastNameLength"+lastNameLength);
+
+    if (lastNameLength > extraCharCount )
+    {
+      lastName=lastName.substring(0,lastNameLength-extraCharCount);
+      log.debug("lastname"+lastName);
+    }else{
+      firstName=firstName.substring(0,firstNameLength-extraCharCount);
+      log.debug("firstName"+firstName);						
+    }
+  } 
+
+  Map upnMap = generateUniqueUPN(firstName,lastName);
+  String upn = upnMap.get("userPrincipalName");
+  
+  log.debug("upn"+upn);
+  
+  return upn;]]></Source>
+</Rule>

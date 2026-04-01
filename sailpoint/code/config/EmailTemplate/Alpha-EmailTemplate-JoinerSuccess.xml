@@ -1,0 +1,29 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE EmailTemplate PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<EmailTemplate name="Alpha-EmailTemplate-JoinerSuccess">
+  <Body>
+    Hi ,
+    
+  $identityDisplayName
+  $identityName
+
+       
+    </Body>
+  <Description>
+		Email to Notify Manager for Joiner Success.
+    </Description>
+  <Signature>
+    <Inputs>
+      <Argument name="identityName" type="string">
+        <Description>The name of the Identity</Description>
+      </Argument>
+      <Argument name="emailArgs" type="Map">
+        <Description>Map holding input agrumenst.</Description>
+      </Argument>
+      <Argument name="identityDisplayName" type="string">
+        <Description>The display name of the Identity .</Description>
+      </Argument>
+    </Inputs>
+  </Signature>
+  <Subject>New Joiner: $identityDisplayName</Subject>
+</EmailTemplate>

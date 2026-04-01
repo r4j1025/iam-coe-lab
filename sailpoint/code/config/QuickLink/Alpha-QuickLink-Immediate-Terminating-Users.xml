@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE QuickLink PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<QuickLink action="workflow" category="Custom" messageKey="Alpha Immediate Termination" name="Alpha-QuickLink-Immediate-Terminating-Users">
+  <Attributes>
+    <Map>
+      <entry key="workflowName" value="Alpha-Workflow-Immediate-Termination"/>
+    </Map>
+  </Attributes>
+  <QuickLinkOptions allowOther="true">
+    <DynamicScopeRef>
+      <Reference class="sailpoint.object.DynamicScope" name="Manager"/>
+    </DynamicScopeRef>
+  </QuickLinkOptions>
+</QuickLink>

@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE EmailTemplate PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<EmailTemplate name="Alpha-EmailTemplate-TerminationSuccess">
+  <Body>
+
+    Hi #if($managerIdentity.getDisplayName()) $managerIdentity.getDisplayName() #end,
+
+    The user #if($targerIdentity.getDisplayName()) $targerIdentity.getDisplayName() #end has successfully terminated.
+
+  </Body>
+  <Description>
+    Email to Notify Manager for User Termination Success.
+  </Description>
+  <Signature>
+    <Inputs>
+      <Argument name="managerIdentity" type="string">
+        <Description>The user's manager identity</Description>
+      </Argument>
+      <Argument name="emailArgs" type="Map">
+        <Description>Map holding input agrumenst.</Description>
+      </Argument>
+      <Argument name="targerIdentity" type="string">
+        <Description>The Identity of terminated user.</Description>
+      </Argument>
+    </Inputs>
+  </Signature>
+  <Subject>User #if($targerIdentity.getDisplayName()) $targerIdentity.getDisplayName() #end has terminated</Subject>
+</EmailTemplate>

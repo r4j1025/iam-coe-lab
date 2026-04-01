@@ -1,0 +1,185 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Workflow PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Workflow explicitTransitions="true" name="Alpha-Workflow-Immediate-Termination" type="IdentityLifecycle">
+  <Variable input="true" name="quickLinkIdentityIds">
+    <Description>Multiple Identity ID's from the QuickLink</Description>
+  </Variable>
+  <Variable input="true" name="quickLinkIdentityId">
+    <Description>Identity ID from the QuickLink</Description>
+  </Variable>
+  <Variable name="identitySelection">
+    <Description>The list of identities seleted from Approval form.</Description>
+  </Variable>
+  <Variable name="terminateIdentity"/>
+  <Variable name="isManagerStatus"/>
+  <Variable initializer="string:true" name="transient">
+    <Description>Set to false to cause workflow-related objects, such as approval work items, to be saved in the database even if they are only viewed.</Description>
+  </Variable>
+  <Variable initializer="string:AccessRequest" name="flow">
+    <Description>The name of the flow.</Description>
+  </Variable>
+  <Variable initializer="string:LCM" name="source">
+    <Description>The name of the source.</Description>
+  </Variable>
+  <Variable input="true" name="identityName">
+    <Description>The name of the identity.</Description>
+  </Variable>
+  <Variable initializer="string:true" name="trace">
+    <Description>Used for debugging this workflow and when set to true trace will be sent to stdout.</Description>
+  </Variable>
+  <Variable editable="true" initializer="true" name="foregroundProvisioning">
+    <Description>
+      Normally provisioning is done in a step that uses the "background"
+      option to force the workflow to be suspend and be resumed in a
+      background task thread.  This prevents the browser session from
+      hanging since provision can sometimes take a long time.  For demos
+      and testing it can be better to do this in the foreground so that
+      provisioning will have been performed when control is returned to the
+      user.  This prevents having to run the Perform Maintenance task to
+      see the results of the request.
+    </Description>
+  </Variable>
+  <Variable name="isSubmitted"/>
+  <Description>This workflow triggers for immediate termination for users.</Description>
+  <Step icon="Start" name="Start" posX="3" posY="3">
+    <Script>
+      <Source><![CDATA[
+
+        import org.apache.log4j.Logger;
+
+        Logger logger = Logger.getLogger("IAM_COE_BIRTHRIGHT_PROVISIONING");
+        if (logger.isTraceEnabled()) {
+        logger.trace("Alpha-Workflow-Immediate-Termination -> Entered to Start Step!!!");
+        }
+
+
+      ]]></Source>
+    </Script>
+    <Transition to="FindTerminatingUser"/>
+  </Step>
+  <Step name="FindTerminatingUser" posX="3" posY="3">
+    <Script>
+      <Source><![CDATA[
+
+        import org.apache.log4j.Logger;
+
+        import sailpoint.object.Identity;
+
+        Logger logger = Logger.getLogger("IAM_COE_BIRTHRIGHT_PROVISIONING");
+        if (logger.isTraceEnabled()) {
+        logger.trace("Alpha-Workflow-Immediate-Termination -> Entered to FindTerminatingUser Step!!!");
+        }
+        Identity identityObject = null;
+        logger.debug("Alpha-Workflow-Immediate-Termination - FindTerminatingUser Step -> QuickLink Identity ID : "+quickLinkIdentityId);
+        if (quickLinkIdentityId != null) {
+        identityObject = context.getObjectById(Identity.class,quickLinkIdentityId);
+        if (identityObject != null) {
+        logger.debug("Alpha-Workflow-Immediate-Termination - FindTerminatingUser Step -> Identity : "+identityObject.getName());
+        workflow.put("terminateIdentity", identityObject.getName());
+        }
+        if (identityObject != null) {
+        logger.debug("Alpha-Workflow-Immediate-Termination - FindTerminatingUser Step -> Decaching the Identity Object");
+        context.decache(identityObject);
+        }
+        }
+        if (logger.isTraceEnabled()) {
+        logger.trace("Alpha-Workflow-Immediate-Termination -> FindTerminatingUser Step is Ended!!!");
+        }
+
+      ]]></Source>
+    </Script>
+    <Transition to="ConfirmUser"/>
+  </Step>
+  <Step name="ConfirmUser" posX="3" posY="3">
+    <Approval name="Alpha-Form-Immediate-Terminating-Users" return="isSubmitted" send="terminateIdentity">
+      <Form name="Alpha-Form-Immediate-Terminating-Users">
+        <Attributes>
+          <Map>
+            <entry key="pageTitle" value="Alpha Immediate Terminating Users"/>
+          </Map>
+        </Attributes>
+        <Description>This custom form used for terminating the users.</Description>
+        <FormRef name="Alpha-Form-Immediate-Terminating-Users"/>
+      </Form>
+      <OwnerScript>
+        <Source><![CDATA[
+
+          context.getUserName();
+
+        ]]></Source>
+      </OwnerScript>
+    </Approval>
+    <Transition to="UpdateTerminationDate">
+      <Script>
+        <Source><![CDATA[
+
+          if (isSubmitted.equalsIgnoreCase("true")) {
+          return true;
+          }
+          else {
+          return false;
+          }
+
+        ]]></Source>
+      </Script>
+    </Transition>
+    <Transition to="Stop"/>
+  </Step>
+  <Step name="UpdateTerminationDate" posX="3" posY="3">
+    <Script>
+      <Source><![CDATA[
+
+        import java.text.SimpleDateFormat;
+        import java.util.Date;
+
+        import org.apache.log4j.Logger;
+
+        import sailpoint.object.Identity;
+
+        Logger logger = Logger.getLogger("IAM_COE_BIRTHRIGHT_PROVISIONING");
+        if (logger.isTraceEnabled()) {
+        logger.trace("Alpha-Workflow-Immediate-Termination -> Entered to UpdateTerminationDate Step!!!");
+        }
+        Identity identityObject = null;
+        logger.debug("Alpha-Workflow-Immediate-Termination - UpdateTerminationDate Step -> TerminateIdentity : "+workflow.get("terminateIdentity"));
+        if (workflow.get("terminateIdentity") != null) {
+        identityObject = context.getObjectByName(Identity.class,workflow.get("terminateIdentity"));
+        if (identityObject != null) {
+        Date currentDate = new Date();
+        String dateFormat = null;
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        dateFormat = sdf.format(currentDate);
+        logger.debug("Alpha-Workflow-Immediate-Termination - UpdateTerminationDate Step -> Formatted TerminationDate : "+dateFormat);
+        identityObject.setAttribute("terminationDate", dateFormat);
+        context.saveObject(identityObject);
+        context.commitTransaction();
+        }
+        if (identityObject != null) {
+        logger.debug("Alpha-Workflow-Immediate-Termination - UpdateTerminationDate Step -> Decaching the Identity Object");
+        context.decache(identityObject);
+        }
+        }
+        if (logger.isTraceEnabled()) {
+        logger.trace("Alpha-Workflow-Immediate-Termination -> UpdateTerminationDate Step is Ended!!!");
+        }
+
+      ]]></Source>
+    </Script>
+    <Transition to="Stop"/>
+  </Step>
+  <Step icon="Stop" name="Stop" posX="3" posY="3">
+    <Script>
+      <Source><![CDATA[
+
+        import org.apache.log4j.Logger;
+
+
+        Logger logger = Logger.getLogger("IAM_COE_BIRTHRIGHT_PROVISIONING");
+        if (logger.isTraceEnabled()) {
+        logger.trace("Alpha-Workflow-Immediate-Termination -> Entered to Stop Step!!!");
+        }
+
+      ]]></Source>
+    </Script>
+  </Step>
+</Workflow>

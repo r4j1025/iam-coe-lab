@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   mysql:
     image: "${MYSQL_IMAGE}:${MYSQL_VERSION}"
-    container_name: "${MYSQL_CONTAINER_NAME:-mysql_db}"
+    container_name: "${MYSQL_CONTAINER_NAME}"
     restart: always
     env_file:
       - .env
@@ -12,29 +10,35 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-    command: --default-authentication-plugin=mysql_native_password --bind-address=0.0.0.0
+    
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --log-error=/var/log/mysql/error.log
+      --slow_query_log=1
+      --slow_query_log_file=/var/log/mysql/slow.log
+      --long_query_time=2
     ports:
       - "${MYSQL_PORT}:3306"
-    # volumes:
-      # Use a project-relative host bind mount so data is persisted inside the repo's db-server/data
-      # This works across macOS, Ubuntu and Fedora when the path is accessible to Docker.
-      # - ./data/mysql:/var/lib/mysql
-      # Mount any SQL files or init scripts from ./config into the MySQL init dir.
-      # Files in ./config are executed on first container init by the official image.
-      # - ./conf:/docker-entrypoint-initdb.d:ro
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - mysql_logs:/var/log/mysql
+      - ./mysql/config:/etc/mysql/conf.d:ro
+      # Mount any SQL files or init scripts from ./mysql/init into the MySQL init dir.
+      - ./mysql/init:/docker-entrypoint-initdb.d:ro
       # Alternative host bind mounts (examples; keep commented unless you explicitly want them):
       # Ubuntu example: /var/lib/mysql:/var/lib/mysql
       # Fedora example: /srv/mysql/data:/var/lib/mysql
       # If you prefer a named docker volume, uncomment the following fallback line:
       # - ${DB_DATA_VOLUME}:/var/lib/mysql
     networks:
-      - localnet
+      - db_network
+volumes:
+  mysql_data:
+    name: mysql_data
+  mysql_logs:
+    name: mysql_logs
 
 networks:
-  localnet:
+  db_network:
     external:
       name: ${NETWORK_NAME}
-
-volumes:
-  db_data:
-    driver: local

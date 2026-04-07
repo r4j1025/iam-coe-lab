@@ -59,7 +59,7 @@
         </value>
       </entry>
       <entry key="group.password" value="1:ACP:RR6LIKz42XfL2itZx64/B9VkDY1Dr74KffJWb3EFyXw="/>
-      <entry key="group.url" value="jdbc:mysql://localhost:3306/tp_appraisal"/>
+      <entry key="group.url" value="jdbc:mysql://mysql_db/tp_appraisal"/>
       <entry key="group.useExecuteQuery">
         <value>
           <Boolean/>
@@ -136,7 +136,7 @@
       </entry>
       <entry key="templateApplication" value="JDBC Template"/>
       <entry key="testConnSQL"/>
-      <entry key="url" value="jdbc:mysql://localhost:3306/tp_appraisal"/>
+      <entry key="url" value="jdbc:mysql://mysql_db/tp_appraisal"/>
       <entry key="useExecuteQuery">
         <value>
           <Boolean/>

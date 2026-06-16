@@ -1,4 +1,4 @@
-CREATE DATABASE  IF NOT EXISTS `tp_appraisal`;
+CREATE DATABASE IF NOT EXISTS `tp_appraisal`;
 USE `tp_appraisal`;
 -- MySQL dump 10.13  Distrib 8.0.21, for Win64 (x86_64)
 --

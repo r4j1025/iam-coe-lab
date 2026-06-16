@@ -1,4 +1,4 @@
-CREATE DATABASE  IF NOT EXISTS `tp_bi`;
+CREATE DATABASE IF NOT EXISTS `tp_bi`;
 USE `tp_bi`;
 -- MySQL dump 10.13  Distrib 8.0.21, for Win64 (x86_64)
 --

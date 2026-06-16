@@ -23,13 +23,18 @@ services:
       - ./.env
     ports:
       - "8081:8080"
-    # volumes:
+    volumes:
       # WAR deployment
-      # - ./tomcat/webapps:/usr/local/tomcat/webapps
-      # Optional config override
-      # - ./tomcat/conf:/usr/local/tomcat/conf
+      - tomcat_data:/usr/local/tomcat/
+      - tomcat_logs:/usr/local/tomcat/logs
     networks:
       - localnet
+    
+volumes:
+  tomcat_data:
+    name: tomcat_data
+  tomcat_logs:
+    name: tomcat_logs
 
 networks:
   localnet:

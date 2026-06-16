@@ -5,5 +5,4 @@ FROM tomcat:9-jdk11
 COPY tomcat/conf /usr/local/tomcat/conf/
 COPY tomcat/webapps/ /usr/local/tomcat/webapps/
 
-
 EXPOSE 8080

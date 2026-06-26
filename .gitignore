@@ -1,5 +1,3 @@
-# WAR files - store separately (too large / licensed)
-*.war
 
 # Docker volume data
 volumes/

@@ -1,4 +1,5 @@
 version: '3.8'
+
 services:
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:latest
@@ -14,24 +15,32 @@ services:
       - "${PMA_PORT}:80"
     networks:
       - localnet
+
   tomcat:
     build: ./tomcat
     container_name: tomcat_apps
-    restart: always
+    restart: unless-stopped
     env_file:
       - ./.env
     ports:
       - "8081:8080"
     volumes:
-      - /var/lib/docker/volumes/sailpoint_iiq_home/_data/logs:/opt/sp_logs
-      - /opt/sp_properties:/opt/sp_properties
+      - tomcat_data:/usr/local/tomcat/
+      - tomcat_logs:/usr/local/tomcat/logs
       - /opt/CSVFiles_HRSoft:/opt/CSVFiles_HRSoft
+      - /opt/CSVFiles_BI:/opt/CSVFiles_BI
       - /opt/CSVFiles_BI_Uploaded:/opt/CSVFiles_BI_Uploaded
+      - /opt/sp_logs:/opt/sp_logs
+      - /opt/sp_properties:/opt/sp_properties
     networks:
       - localnet
+
 volumes:
+  tomcat_data:
+    name: tomcat_data
   tomcat_logs:
     name: tomcat_logs
+
 networks:
   localnet:
     external:

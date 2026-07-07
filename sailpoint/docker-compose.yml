@@ -7,7 +7,6 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-
     environment:
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
@@ -18,35 +17,8 @@ services:
       DB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       IIQ_HOSTNAME: localhost
       IIQ_PORT: 8080
-
     ports:
       - "8082:8080"
-
-    # volumes:
-      # --------------------------------------
-      # Cross-platform safe bind mount
-      # Works on:
-      # - macOS (Docker Desktop)
-      # - Ubuntu
-      # - Fedora
-      #
-      # Use relative path (recommended)
-      # --------------------------------------
-      # - ./config:/config:ro/
-
-      # --------------------------------------
-      # OPTIONAL: Absolute path examples
-      #
-      # macOS:
-      # - /Users/yourname/iam-coe-lab/sailpoint/config:/config:ro
-      #
-      # Ubuntu:
-      # - /home/yourname/iam-coe-lab/sailpoint/config:/config:ro
-      #
-      # Fedora:
-      # - /home/yourname/iam-coe-lab/sailpoint/config:/config:ro
-      # --------------------------------------
-
     volumes:
       - iiq_home:/opt/iiq
       - iiq_webapps:/usr/local/tomcat/webapps

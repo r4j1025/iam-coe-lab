@@ -1,0 +1,17 @@
+version: '3.8'
+services:
+  json-api:
+    build: .
+    container_name: json_api
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - /opt/api-data:/opt/api-data
+      - /opt/api-data-no-auth:/opt/api-data-no-auth
+    networks:
+      - localnet
+networks:
+  localnet:
+    external:
+      name: iam-coe-local-net

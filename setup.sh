@@ -249,33 +249,39 @@ else
   echo "⚠️  SailPoint volume not found — skipping log4j setup (SailPoint may still be building)"
 fi
 
-# ── 12. Generate SSL cert + configure nginx ───────────────────────────────────
-echo "🔐 Generating self-signed SSL certificate..."
-sudo mkdir -p /etc/nginx/ssl
-sudo openssl req -x509 -nodes -days 825 -newkey rsa:2048 \
-  -keyout /etc/nginx/ssl/iamcoe.key \
-  -out /etc/nginx/ssl/iamcoe.crt \
-  -subj "/C=IN/O=IAMCOE Labs/CN=${VM_IP}" \
-  -addext "subjectAltName=IP:${VM_IP}"
-echo "✅ SSL cert created (CN/SAN = $VM_IP)"
-
+# ── 12. Configure nginx (HTTP proxy + MySQL TCP stream on 443) ────────────────
 echo "🌐 Configuring nginx..."
+
+# Install stream module
+sudo apt-get install -y libnginx-mod-stream
+
+# Add MySQL TCP stream to nginx.conf (port 443 → MySQL 3306 for Saviynt JDBC)
+if ! grep -q "stream {" /etc/nginx/nginx.conf; then
+  sudo tee -a /etc/nginx/nginx.conf >/dev/null <<'STREAMEOF'
+stream {
+    server {
+        listen 443;
+        proxy_pass 127.0.0.1:3306;
+    }
+}
+STREAMEOF
+  echo "✅ MySQL stream block added to nginx.conf"
+fi
+
+# Fix broken stream module symlink if needed (Ubuntu 26.04)
+if [ -L /etc/nginx/modules-enabled/50-mod-stream.conf ] &&    [ ! -e /etc/nginx/modules-enabled/50-mod-stream.conf ]; then
+  sudo rm /etc/nginx/modules-enabled/50-mod-stream.conf
+fi
+if [ ! -e /etc/nginx/modules-enabled/50-mod-stream.conf ]; then
+  sudo ln -sf /usr/share/nginx/modules-available/mod-stream.conf     /etc/nginx/modules-enabled/50-mod-stream.conf
+fi
+
+# Write HTTP-only nginx site config (all apps on port 80, no SSL)
 sudo tee /etc/nginx/sites-available/iamcoe.conf >/dev/null <<EOF
 server {
     listen 80;
     server_name $VM_IP;
-    return 301 https://\$host\$request_uri;
-}
 
-server {
-    listen 443 ssl;
-    server_name $VM_IP;
-
-    ssl_certificate     /etc/nginx/ssl/iamcoe.crt;
-    ssl_certificate_key /etc/nginx/ssl/iamcoe.key;
-    ssl_protocols TLSv1.2 TLSv1.3;
-
-    # ── Main apps ─────────────────────────────────────
     location /HRSoft/ {
         proxy_pass http://127.0.0.1:8081/HRSoft/;
         proxy_set_header Host \$host;
@@ -311,6 +317,14 @@ server {
     }
     location = /HRSoft_WS { return 301 /HRSoft_WS/; }
 
+    location /api/ {
+        proxy_pass http://127.0.0.1:3000/api/;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+    }
+
     location /identityiq/ {
         proxy_pass http://127.0.0.1:8082/identityiq/;
         proxy_set_header Host \$host;
@@ -319,7 +333,6 @@ server {
         proxy_buffers 4 256k;
     }
 
-    # ── Auth-protected Tomcat-hosted folders ──────────
     location /HRSoft_CSVExtract/ {
         proxy_pass http://127.0.0.1:8081/HRSoft_CSVExtract/;
         proxy_set_header Host \$host;
@@ -353,7 +366,17 @@ EOF
 sudo ln -sf /etc/nginx/sites-available/iamcoe.conf /etc/nginx/sites-enabled/iamcoe.conf
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t && sudo systemctl enable nginx && sudo systemctl reload nginx
-echo "✅ nginx configured"
+echo "✅ nginx configured (HTTP on 80, MySQL stream on 443)"
+
+# ── 12b. Start JSON API ───────────────────────────────────────────────────────
+echo "🔌 Starting JSON API..."
+sudo mkdir -p /opt/api-data /opt/api-data-no-auth
+sudo chmod 777 /opt/api-data /opt/api-data-no-auth
+cd "$REPO_DIR/json-api"
+docker compose up -d --build
+sleep 5
+curl -s -o /dev/null -w "JSON API V2: %{http_code}\n" http://localhost/api/V2 || true
+echo "✅ JSON API ready"
 
 # ── 13. Final status ──────────────────────────────────────────────────────────
 echo ""

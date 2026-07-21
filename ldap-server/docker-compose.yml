@@ -9,7 +9,9 @@ services:
       LDAP_ORGANISATION: "IAMCOE Labs"
       LDAP_DOMAIN: "iamcoe.cloud"
       LDAP_ADMIN_PASSWORD: "admin"
-      LDAP_TLS: "false"                # start without TLS
+      LDAP_TLS: "true"
+      LDAP_TLS_ENFORCE: "false"
+      LDAP_TLS_VERIFY_CLIENT: "never"
       LDAP_REMOVE_CONFIG_AFTER_SETUP: "false"
     volumes:
       - ldap_data:/var/lib/ldap

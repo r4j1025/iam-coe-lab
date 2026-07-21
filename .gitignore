@@ -5,3 +5,5 @@ volumes/
 # OS files
 .DS_Store
 *.swp
+ldap-server/certs/*.key
+ldap-server/certs/*.srl
